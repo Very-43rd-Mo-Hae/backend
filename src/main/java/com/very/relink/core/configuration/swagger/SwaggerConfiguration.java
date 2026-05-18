@@ -1,4 +1,4 @@
-package com.very.relink.core.config.swagger;
+package com.very.relink.core.configuration.swagger;
 
 import com.very.relink.core.exception.error.BaseErrorCode;
 import com.very.relink.core.presentation.ErrorResponse;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @OpenAPIDefinition(
         info = @Info(title = "Re-Link API", description = "ReLink API 명세서", version = "v1.0.0")
 )
-public class SwaggerConfig {
+public class SwaggerConfiguration {
     @Value("${springdoc.server-url}")
     private String serverUrl;
 

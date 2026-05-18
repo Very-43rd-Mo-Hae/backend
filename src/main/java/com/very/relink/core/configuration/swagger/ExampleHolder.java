@@ -1,4 +1,4 @@
-package com.very.relink.core.config.swagger;
+package com.very.relink.core.configuration.swagger;
 
 import io.swagger.v3.oas.models.examples.Example;
 import lombok.Builder;

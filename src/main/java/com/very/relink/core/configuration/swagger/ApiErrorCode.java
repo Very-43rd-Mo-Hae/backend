@@ -1,4 +1,4 @@
-package com.very.relink.core.config.swagger;
+package com.very.relink.core.configuration.swagger;
 
 import com.very.relink.core.exception.error.BaseErrorCode;
 
