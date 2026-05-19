@@ -23,6 +23,10 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
 
+jwt:
+  secret: relink-local-development-secret-key-should-be-changed
+  access-token-expiration-seconds: 3600
+
 cors:
   allowed:
     paths: "/**"

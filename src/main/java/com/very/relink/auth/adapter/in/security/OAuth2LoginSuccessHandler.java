@@ -1,5 +1,7 @@
 package com.very.relink.auth.adapter.in.security;
 
+import com.very.relink.auth.application.service.OAuth2AuthenticatedUser;
+import com.very.relink.auth.domain.token.AuthTokens;
 import com.very.relink.core.presentation.RestResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,15 +29,34 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException, ServletException {
+        OAuth2AuthenticatedUser principal = (OAuth2AuthenticatedUser) authentication.getPrincipal();
+
         response.setStatus(HttpStatus.OK.value());
         response.setCharacterEncoding("UTF-8");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(
                 response.getWriter(),
-                new RestResponse<>(new OAuth2LoginSuccessResponse("OAuth2 로그인에 성공했습니다."))
+                new RestResponse<>(OAuth2LoginSuccessResponse.from(
+                        principal.getMemberId(),
+                        principal.getAuthTokens()
+                ))
         );
     }
 
-    private record OAuth2LoginSuccessResponse(String message) {
+    private record OAuth2LoginSuccessResponse(
+            Long memberId,
+            String accessToken,
+            String tokenType,
+            Long expiresIn
+    ) {
+
+        private static OAuth2LoginSuccessResponse from(Long memberId, AuthTokens authTokens) {
+            return new OAuth2LoginSuccessResponse(
+                    memberId,
+                    authTokens.accessToken(),
+                    authTokens.tokenType(),
+                    authTokens.expiresIn()
+            );
+        }
     }
 }
