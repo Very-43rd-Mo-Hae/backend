@@ -8,7 +8,8 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum AuthErrorCode implements BaseErrorCode<DomainException> {
 
-    UNSUPPORTED_OAUTH2_PROVIDER(HttpStatus.BAD_REQUEST, "지원하지 않는 OAuth2 제공자입니다.");
+    UNSUPPORTED_OAUTH2_PROVIDER(HttpStatus.BAD_REQUEST, "지원하지 않는 OAuth2 제공자입니다."),
+    OAUTH2_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "OAuth2 로그인에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
