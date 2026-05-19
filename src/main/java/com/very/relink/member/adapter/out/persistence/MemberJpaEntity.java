@@ -26,7 +26,7 @@ public class MemberJpaEntity extends BaseEntity {
     @Column(name = "member_id")
     private Long id;
 
-    @Column(name = "email")
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @Column(name = "name")
