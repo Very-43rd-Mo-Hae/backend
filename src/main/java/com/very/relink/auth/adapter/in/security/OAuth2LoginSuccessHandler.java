@@ -28,7 +28,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             HttpServletRequest request,
             HttpServletResponse response,
             Authentication authentication
-    ) throws IOException, ServletException {
+    ) throws IOException {
         OAuth2AuthenticatedUser principal = (OAuth2AuthenticatedUser) authentication.getPrincipal();
 
         response.setStatus(HttpStatus.OK.value());

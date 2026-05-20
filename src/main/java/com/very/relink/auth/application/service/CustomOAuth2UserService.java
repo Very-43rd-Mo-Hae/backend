@@ -73,18 +73,22 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     }
 
     private OAuth2User loginWithGoogle(OAuth2UserInfo userInfo, OAuth2User oAuth2User) {
-        return loginWithOAuth2UserInfo(userInfo, oAuth2User);
+        return loginWithOAuth2UserInfo(userInfo, oAuth2User, OAuth2Provider.GOOGLE);
     }
 
     private OAuth2User loginWithKakao(OAuth2UserInfo userInfo, OAuth2User oAuth2User) {
-        return loginWithOAuth2UserInfo(userInfo, oAuth2User);
+        return loginWithOAuth2UserInfo(userInfo, oAuth2User, OAuth2Provider.KAKAO);
     }
 
     private OAuth2User loginWithApple(OAuth2UserInfo userInfo, OAuth2User oAuth2User) {
-        return loginWithOAuth2UserInfo(userInfo, oAuth2User);
+        return loginWithOAuth2UserInfo(userInfo, oAuth2User, OAuth2Provider.APPLE);
     }
 
-    private OAuth2User loginWithOAuth2UserInfo(OAuth2UserInfo userInfo, OAuth2User oAuth2User) {
+    private OAuth2User loginWithOAuth2UserInfo(
+            OAuth2UserInfo userInfo,
+            OAuth2User oAuth2User,
+            OAuth2Provider provider
+    ) {
         String email = userInfo.getEmail();
         if (email == null || email.isBlank()) {
             throw AuthErrorCode.OAUTH2_EMAIL_NOT_FOUND.toException();
@@ -94,7 +98,8 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                 .orElseGet(() -> saveMemberPort.save(Member.create(
                         email,
                         userInfo.getName(),
-                        userInfo.getImageUrl()
+                        userInfo.getImageUrl(),
+                        provider
                 )));
 
         AuthTokens authTokens = tokenIssuePort.issue(member);

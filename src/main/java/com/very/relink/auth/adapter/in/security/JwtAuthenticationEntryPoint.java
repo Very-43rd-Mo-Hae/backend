@@ -27,7 +27,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationException authException
-    ) throws IOException, ServletException {
+    ) throws IOException {
         DomainException exception = AuthErrorCode.AUTHENTICATION_REQUIRED.toException();
 
         response.setStatus(exception.getHttpStatus().value());

@@ -27,7 +27,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
             HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationException exception
-    ) throws IOException, ServletException {
+    ) throws IOException {
         DomainException domainException = extractDomainException(exception);
 
         response.setStatus(domainException.getHttpStatus().value());

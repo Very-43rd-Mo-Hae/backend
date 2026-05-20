@@ -1,8 +1,11 @@
 package com.very.relink.member.adapter.out.persistence;
 
+import com.very.relink.auth.domain.value.OAuth2Provider;
 import com.very.relink.core.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -34,4 +37,8 @@ public class MemberJpaEntity extends BaseEntity {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider")
+    private OAuth2Provider provider;
 }

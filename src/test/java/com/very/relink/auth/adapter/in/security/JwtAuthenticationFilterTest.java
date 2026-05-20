@@ -43,11 +43,14 @@ class JwtAuthenticationFilterTest {
         assertThat(chainCalled).isTrue();
         assertThat(authentication).isNotNull();
         assertThat(authentication.isAuthenticated()).isTrue();
-        assertThat(authentication.getPrincipal()).isEqualTo(new AuthenticatedMember(
+        assertThat(authentication.getPrincipal()).isInstanceOf(CustomUserDetail.class);
+        CustomUserDetail principal = (CustomUserDetail) authentication.getPrincipal();
+        assertThat(principal.getAuthenticatedMember()).isEqualTo(new AuthenticatedMember(
                 1L,
                 "test@example.com",
                 "tester"
         ));
+        assertThat(principal.getUsername()).isEqualTo("test@example.com");
     }
 
     @Test
