@@ -16,17 +16,25 @@ public class Member {
     private String name;
     private String imageUrl;
     private OAuth2Provider provider;
+    private String providerId;
 
     public static Member create(String email, String name, String imageUrl) {
-        return create(email, name, imageUrl, null);
+        return create(email, name, imageUrl, null, null);
     }
 
-    public static Member create(String email, String name, String imageUrl, OAuth2Provider provider) {
+    public static Member create(
+            String email,
+            String name,
+            String imageUrl,
+            OAuth2Provider provider,
+            String providerId
+    ) {
         return Member.builder()
                 .email(email)
                 .name(name)
                 .imageUrl(imageUrl)
                 .provider(provider)
+                .providerId(providerId)
                 .build();
     }
 

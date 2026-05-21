@@ -1,5 +1,6 @@
 package com.very.relink.member.adapter.out.persistence;
 
+import com.very.relink.auth.domain.value.OAuth2Provider;
 import com.very.relink.member.application.port.out.LoadMemberPort;
 import com.very.relink.member.application.port.out.SaveMemberPort;
 import com.very.relink.member.domain.Member;
@@ -17,6 +18,14 @@ public class MemberPersistenceAdapter implements LoadMemberPort, SaveMemberPort 
     @Override
     public Optional<Member> findByEmail(String email) {
         return memberJpaRepository.findByEmail(email)
+                .map(memberMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Member> findByProviderAndProviderId(
+            OAuth2Provider provider, String providerId
+    ) {
+        return memberJpaRepository.findByProviderAndProviderId(provider, providerId)
                 .map(memberMapper::toDomain);
     }
 
