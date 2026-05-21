@@ -5,6 +5,7 @@ import com.very.relink.auth.adapter.in.web.SocialLoginResponse;
 import com.very.relink.auth.application.command.SocialLoginCommand;
 import com.very.relink.auth.application.port.in.SocialLoginUseCase;
 import com.very.relink.auth.application.result.OAuth2LoginResult;
+import com.very.relink.auth.presentation.swagger.SocialLoginSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth/social")
-public class SocialLoginController {
+public class SocialLoginController implements SocialLoginSwagger {
 
     private final SocialLoginUseCase socialLoginUseCase;
 
+    @Override
     @PostMapping("/login")
     public ResponseEntity<RestResponse<SocialLoginResponse>> login(
             @Valid @RequestBody SocialLoginRequest socialLoginRequest
