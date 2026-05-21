@@ -17,6 +17,7 @@ public class MemberMapper {
                 .name(entity.getName())
                 .imageUrl(entity.getImageUrl())
                 .provider(entity.getProvider())
+                .providerId(entity.getProviderId())
                 .build();
     }
 
@@ -31,6 +32,7 @@ public class MemberMapper {
                 .name(member.getName())
                 .imageUrl(member.getImageUrl())
                 .provider(member.getProvider())
+                .providerId(member.getProviderId())
                 .build();
     }
 }

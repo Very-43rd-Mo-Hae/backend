@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,6 +22,15 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+        name = "members",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_members_provider_provider_id",
+                        columnNames = {"provider", "provider_id"}
+                )
+        }
+)
 @Table(name = "members")
 public class MemberJpaEntity extends BaseEntity {
 
@@ -29,7 +39,7 @@ public class MemberJpaEntity extends BaseEntity {
     @Column(name = "member_id")
     private Long id;
 
-    @Column(name = "email", nullable = false, unique = true)
+    @Column(name = "email")
     private String email;
 
     @Column(name = "name")
@@ -37,6 +47,9 @@ public class MemberJpaEntity extends BaseEntity {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "provider_id", nullable = false)
+    private String providerId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "provider")
