@@ -1,10 +1,9 @@
-package com.very.relink.auth.adapter.out.social;
+package com.very.relink.auth.adapter.out.social.kakao;
 
 import com.very.relink.auth.application.command.SocialLoginCommand;
+import com.very.relink.auth.adapter.out.social.support.AbstractTemporarySocialUserResolver;
 import com.very.relink.auth.domain.value.OAuth2Provider;
-import org.springframework.stereotype.Component;
 
-@Component
 public class TemporaryKakaoSocialUserResolver extends AbstractTemporarySocialUserResolver {
 
     @Override
