@@ -76,3 +76,7 @@ cors:
       - Authorization
     max-age: 3600
     credentials: true
+
+social:
+  kakao:
+    user-info-uri: https://kapi.kakao.com/v2/user/me

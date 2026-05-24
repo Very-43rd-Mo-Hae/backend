@@ -1,4 +1,4 @@
-package com.very.relink.auth.adapter.out.social;
+package com.very.relink.auth.adapter.out.social.support;
 
 import com.very.relink.auth.application.command.SocialLoginCommand;
 import com.very.relink.auth.application.port.out.SocialUserResolver;
@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-abstract class AbstractTemporarySocialUserResolver implements SocialUserResolver {
+public abstract class AbstractTemporarySocialUserResolver implements SocialUserResolver {
 
     @Override
     public SocialLoginUserInfo resolve(SocialLoginCommand socialLoginCommand) {
