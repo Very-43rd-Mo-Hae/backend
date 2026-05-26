@@ -3,18 +3,13 @@ package com.very.relink.core.configuration.security;
 import com.very.relink.auth.adapter.in.security.JwtAccessDeniedHandler;
 import com.very.relink.auth.adapter.in.security.JwtAuthenticationEntryPoint;
 import com.very.relink.auth.adapter.in.security.JwtAuthenticationFilter;
-import com.very.relink.auth.adapter.in.security.OAuth2LoginFailureHandler;
-import com.very.relink.auth.adapter.in.security.OAuth2LoginSuccessHandler;
-import com.very.relink.auth.application.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -25,12 +20,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfiguration {
 
     private final CorsConfigurationSource corsConfigurationSource;
-    private final CustomOAuth2UserService customOAuth2UserService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
-    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
-    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 
     private static final String[] AUTH_WHITELIST = {
             "/v3/api-docs/**",
@@ -55,13 +47,6 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .anyRequest().authenticated()
-                )
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2LoginSuccessHandler)
-                        .failureHandler(oAuth2LoginFailureHandler)
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService)
-                        )
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

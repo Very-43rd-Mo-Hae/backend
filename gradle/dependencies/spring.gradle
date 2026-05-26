@@ -2,7 +2,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    implementation 'com.nimbusds:nimbus-jose-jwt:10.4'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 }
