@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class OAuth2LoginServiceTest {
 
     @Test
-    @DisplayName("returns saved member id for new kakao member")
+    @DisplayName("저장된 멤버와 새로운 카카오 유저 id를 반환한다.")
     void loginReturnsSavedMemberId() {
         LoadMemberPort loadMemberPort = new FakeLoadMemberPort(Optional.empty());
         SaveMemberPort saveMemberPort = member -> Member.builder()
@@ -28,7 +28,7 @@ class OAuth2LoginServiceTest {
                 .provider(member.getProvider())
                 .providerId(member.getProviderId())
                 .build();
-        TokenIssuePort tokenIssuePort = member -> new AuthTokens("access-token", "Bearer", 3600L);
+        TokenIssuePort tokenIssuePort = member -> new AuthTokens("access-token", "refresh-token", "Bearer", 3600L, 1209600L);
         OAuth2LoginService service = new OAuth2LoginService(
                 loadMemberPort,
                 saveMemberPort,
@@ -48,7 +48,7 @@ class OAuth2LoginServiceTest {
     }
 
     @Test
-    @DisplayName("returns existing member id for existing kakao member")
+    @DisplayName("존재하는 멤버의 id 및 카카오 유저의 아이디를 반환한다.")
     void loginReturnsExistingMemberId() {
         Member existingMember = Member.builder()
                 .id(2L)
@@ -62,7 +62,7 @@ class OAuth2LoginServiceTest {
         SaveMemberPort saveMemberPort = member -> {
             throw new IllegalStateException("Existing member should not be saved again.");
         };
-        TokenIssuePort tokenIssuePort = member -> new AuthTokens("access-token", "Bearer", 3600L);
+        TokenIssuePort tokenIssuePort = member -> new AuthTokens("access-token", "refresh-token", "Bearer", 3600L, 1209600L);
         OAuth2LoginService service = new OAuth2LoginService(
                 loadMemberPort,
                 saveMemberPort,

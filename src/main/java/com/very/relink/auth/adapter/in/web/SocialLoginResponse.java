@@ -5,6 +5,7 @@ import com.very.relink.auth.domain.token.AuthTokens;
 public record SocialLoginResponse(
         Long memberId,
         String accessToken,
+        String refreshToken,
         Long accessTokenExpiresIn
 ) {
 
@@ -12,7 +13,8 @@ public record SocialLoginResponse(
         return new SocialLoginResponse(
                 memberId,
                 authTokens.accessToken(),
-                authTokens.expiresIn()
+                authTokens.refreshToken(),
+                authTokens.accessTokenExpiresIn()
         );
     }
 }

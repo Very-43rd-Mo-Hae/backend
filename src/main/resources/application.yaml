@@ -33,7 +33,8 @@ springdoc:
 
 jwt:
   secret: relink-local-development-secret-key-should-be-changed
-  access-token-expiration-seconds: 3600
+  access-token-expiration-seconds: 900
+  refresh-token-expiration-seconds: 1209600
 
 cors:
   allowed:
