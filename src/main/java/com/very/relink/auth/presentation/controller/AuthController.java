@@ -1,14 +1,18 @@
 package com.very.relink.auth.presentation.controller;
 
+import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginResponse;
 import com.very.relink.auth.application.command.SocialLoginCommand;
 import com.very.relink.auth.application.port.in.SocialLoginUseCase;
 import com.very.relink.auth.application.result.OAuth2LoginResult;
-import com.very.relink.auth.presentation.swagger.SocialLoginSwagger;
+import com.very.relink.auth.application.result.ReissueTokenResponse;
+import com.very.relink.auth.presentation.swagger.AuthSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import jakarta.validation.Valid;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,8 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/auth/social")
-public class SocialLoginController implements SocialLoginSwagger {
+@RequestMapping("/api/v1/auth")
+public class AuthController implements AuthSwagger {
 
     private final SocialLoginUseCase socialLoginUseCase;
 
@@ -41,5 +45,25 @@ public class SocialLoginController implements SocialLoginSwagger {
                         SocialLoginResponse.from(result.memberId(), result.authTokens())
                 )
         );
+    }
+
+    @Override
+    @PostMapping("/reissue")
+    public ResponseEntity<RestResponse<ReissueTokenResponse>> reissue(
+            @RequestBody ReIssueTokenRequest reIssueTokenRequest
+            ) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    @PostMapping("/logout")
+    public ResponseEntity<RestResponse<Void>> logout() {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    @PostMapping("/logout/all")
+    public ResponseEntity<RestResponse<Void>> logoutAll() {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 }
