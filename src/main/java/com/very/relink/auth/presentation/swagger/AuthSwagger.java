@@ -5,6 +5,7 @@ import com.very.relink.auth.adapter.in.web.SocialLoginRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginResponse;
 import com.very.relink.auth.application.result.ReissueTokenResponse;
 import com.very.relink.auth.exception.AuthErrorCode;
+import com.very.relink.auth.exception.TokenErrorCode;
 import com.very.relink.core.configuration.swagger.ApiErrorCode;
 import com.very.relink.core.presentation.RestResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -46,10 +46,10 @@ public interface AuthSwagger {
             description = "토큰 재발급 성공",
             content = @Content(schema = @Schema(implementation = SocialLoginResponse.class))
     )
-    @ApiErrorCode({AuthErrorCode.class})
+    @ApiErrorCode({AuthErrorCode.class, TokenErrorCode.class})
     ResponseEntity<RestResponse<ReissueTokenResponse>> reissue(
             @RequestBody ReIssueTokenRequest reIssueTokenRequest
-            );
+    );
 
     @Operation(
             summary = "로그아웃",
@@ -60,7 +60,7 @@ public interface AuthSwagger {
             description = "로그아웃 성공",
             content = @Content(schema = @Schema(implementation = RestResponse.class))
     )
-    @ApiErrorCode({AuthErrorCode.class})
+    @ApiErrorCode({AuthErrorCode.class, TokenErrorCode.class})
     ResponseEntity<RestResponse<Void>> logout();
 
     @Operation(
@@ -72,6 +72,6 @@ public interface AuthSwagger {
             description = "전체 로그아웃 성공",
             content = @Content(schema = @Schema(implementation = RestResponse.class))
     )
-    @ApiErrorCode({AuthErrorCode.class})
+    @ApiErrorCode({AuthErrorCode.class, TokenErrorCode.class})
     ResponseEntity<RestResponse<Void>> logoutAll();
 }
