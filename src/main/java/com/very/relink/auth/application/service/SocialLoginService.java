@@ -48,7 +48,10 @@ public class SocialLoginService implements SocialLoginUseCase {
                 userInfo.providerId(),
                 userInfo.email(),
                 userInfo.name(),
-                userInfo.imageUrl()
+                userInfo.imageUrl(),
+                socialLoginCommand.deviceId(),
+                socialLoginCommand.deviceName(),
+                socialLoginCommand.userAgent()
         ));
     }
 }

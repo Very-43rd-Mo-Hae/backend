@@ -39,7 +39,7 @@ public class JwtTokenIssueAdapter implements TokenIssuePort, TokenAuthentication
     }
 
     @Override
-    public AuthTokens issue(Member member) {
+    public AuthTokens issue(Member member, String sessionId, String refreshTokenJti) {
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plusSeconds(jwtProperties.accessTokenExpirationSeconds());
 
@@ -66,7 +66,7 @@ public class JwtTokenIssueAdapter implements TokenIssuePort, TokenAuthentication
 
         return new AuthTokens(
                 signedJWT.serialize(),
-                issueRefreshToken(member.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()),
+                issueRefreshToken(member.getId(), sessionId, refreshTokenJti),
                 TOKEN_TYPE,
                 jwtProperties.accessTokenExpirationSeconds(),
                 jwtProperties.refreshTokenExpirationSeconds()

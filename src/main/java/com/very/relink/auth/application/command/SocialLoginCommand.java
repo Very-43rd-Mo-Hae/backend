@@ -6,6 +6,9 @@ public record SocialLoginCommand(
         OAuth2Provider provider,
         String idToken,
         String accessToken,
-        String name
+        String name,
+        String deviceId,
+        String deviceName,
+        String userAgent
 ) {
 }

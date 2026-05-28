@@ -5,5 +5,5 @@ import com.very.relink.member.domain.Member;
 
 public interface TokenIssuePort {
 
-    AuthTokens issue(Member member);
+    AuthTokens issue(Member member, String sessionId, String refreshTokenJti);
 }

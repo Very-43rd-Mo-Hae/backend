@@ -10,12 +10,12 @@ import com.very.relink.auth.application.result.ReissueTokenResponse;
 import com.very.relink.auth.presentation.swagger.AuthSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import jakarta.validation.Valid;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,14 +29,18 @@ public class AuthController implements AuthSwagger {
     @Override
     @PostMapping("/login")
     public ResponseEntity<RestResponse<SocialLoginResponse>> login(
-            @Valid @RequestBody SocialLoginRequest socialLoginRequest
+            @Valid @RequestBody SocialLoginRequest socialLoginRequest,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent
     ) {
         OAuth2LoginResult result = socialLoginUseCase.login(
                 new SocialLoginCommand(
                         socialLoginRequest.provider(),
                         socialLoginRequest.idToken(),
                         socialLoginRequest.accessToken(),
-                        socialLoginRequest.name()
+                        socialLoginRequest.name(),
+                        socialLoginRequest.deviceId(),
+                        socialLoginRequest.deviceName(),
+                        userAgent
                 )
         );
 

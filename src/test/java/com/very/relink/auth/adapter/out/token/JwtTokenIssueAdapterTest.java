@@ -28,7 +28,7 @@ class JwtTokenIssueAdapterTest {
                 .imageUrl("https://example.com/profile.png")
                 .build();
 
-        AuthTokens authTokens = adapter.issue(member);
+        AuthTokens authTokens = adapter.issue(member, "session-id", "refresh-token-jti");
         AuthenticatedMember authenticatedMember = adapter.authenticate(authTokens.accessToken());
 
         assertThat(authTokens.tokenType()).isEqualTo("Bearer");
@@ -38,6 +38,7 @@ class JwtTokenIssueAdapterTest {
         assertThat(authenticatedMember.memberId()).isEqualTo(1L);
         assertThat(authenticatedMember.email()).isEqualTo("test@example.com");
         assertThat(authenticatedMember.name()).isEqualTo("tester");
+        assertThat(adapter.authenticateRefreshToken(authTokens.refreshToken()).sessionId()).isEqualTo("session-id");
     }
 
     @Test
@@ -63,7 +64,7 @@ class JwtTokenIssueAdapterTest {
                 .name("tester")
                 .build();
 
-        AuthTokens authTokens = adapter.issue(member);
+        AuthTokens authTokens = adapter.issue(member, "session-id", "refresh-token-jti");
 
         assertThatThrownBy(() -> adapter.authenticate(authTokens.accessToken()))
                 .isInstanceOf(DomainException.class)

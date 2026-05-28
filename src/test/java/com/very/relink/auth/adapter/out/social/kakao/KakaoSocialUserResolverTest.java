@@ -33,6 +33,9 @@ class KakaoSocialUserResolverTest {
                 OAuth2Provider.KAKAO,
                 null,
                 "kakao-access-token",
+                null,
+                null,
+                null,
                 null
         ));
 
@@ -55,6 +58,9 @@ class KakaoSocialUserResolverTest {
                 OAuth2Provider.KAKAO,
                 null,
                 " ",
+                null,
+                null,
+                null,
                 null
         )))
                 .isInstanceOf(DomainException.class)

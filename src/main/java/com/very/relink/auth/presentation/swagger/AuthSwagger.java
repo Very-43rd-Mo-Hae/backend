@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 @Tag(name = "Auth", description = "인증 API")
 public interface AuthSwagger {
@@ -33,7 +34,8 @@ public interface AuthSwagger {
     )
     @ApiErrorCode({AuthErrorCode.class})
     ResponseEntity<RestResponse<SocialLoginResponse>> login(
-            @Valid @RequestBody SocialLoginRequest request
+            @Valid @RequestBody SocialLoginRequest request,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent
     );
 
     @Operation(

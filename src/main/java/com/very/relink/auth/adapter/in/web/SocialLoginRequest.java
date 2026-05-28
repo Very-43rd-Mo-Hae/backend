@@ -23,9 +23,15 @@ public record SocialLoginRequest(
         String accessToken,
 
         @Schema(
-                description = "Apple 최초 로그인 시 앱에서 받은 사용자 이름. 다른 provider에서는 선택값입니다.",
+                description = "Apple 최초 로그인 응답에서 받은 사용자 이름. 다른 provider에서는 선택값입니다.",
                 example = "홍길동"
         )
-        String name
+        String name,
+
+        @Schema(description = "클라이언트 기기 식별자", example = "device-uuid")
+        String deviceId,
+
+        @Schema(description = "클라이언트 기기 이름", example = "iPhone 15")
+        String deviceName
 ) {
 }

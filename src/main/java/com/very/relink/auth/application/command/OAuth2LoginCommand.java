@@ -7,6 +7,9 @@ public record OAuth2LoginCommand(
         String providerId,
         String email,
         String name,
-        String imageUrl
+        String imageUrl,
+        String deviceId,
+        String deviceName,
+        String userAgent
 ) {
 }
