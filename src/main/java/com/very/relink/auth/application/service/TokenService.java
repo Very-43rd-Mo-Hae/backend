@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TokenService {
 
-    private RefreshTokenIssuePort refreshTokenIssuePort;
+    private final RefreshTokenIssuePort refreshTokenIssuePort;
 
     /**
      * 1. Refresh Token 서명 검증
