@@ -7,6 +7,7 @@ import com.very.relink.auth.application.command.SocialLoginCommand;
 import com.very.relink.auth.application.port.in.SocialLoginUseCase;
 import com.very.relink.auth.application.result.OAuth2LoginResult;
 import com.very.relink.auth.application.result.ReissueTokenResponse;
+import com.very.relink.auth.application.service.TokenService;
 import com.very.relink.auth.presentation.swagger.AuthSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController implements AuthSwagger {
 
     private final SocialLoginUseCase socialLoginUseCase;
+    private final TokenService tokenService;
 
     @Override
     @PostMapping("/login")
@@ -55,8 +57,10 @@ public class AuthController implements AuthSwagger {
     @PostMapping("/reissue")
     public ResponseEntity<RestResponse<ReissueTokenResponse>> reissue(
             @RequestBody ReIssueTokenRequest reIssueTokenRequest
-            ) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    ) {
+        return ResponseEntity.ok(
+                new RestResponse<>(tokenService.reIssueToken(reIssueTokenRequest))
+        );
     }
 
     @Override

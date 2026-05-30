@@ -6,7 +6,10 @@ import java.util.Optional;
 
 public interface LoadMemberPort {
 
+    Optional<Member> findById(Long id);
+
     Optional<Member> findByEmail(String email);
+
     Optional<Member> findByProviderAndProviderId(
             OAuth2Provider provider,
             String providerId

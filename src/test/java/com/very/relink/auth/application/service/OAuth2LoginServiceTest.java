@@ -128,6 +128,11 @@ class OAuth2LoginServiceTest {
     private record FakeLoadMemberPort(Optional<Member> member) implements LoadMemberPort {
 
         @Override
+        public Optional<Member> findById(Long id) {
+            return member.filter(value -> value.getId().equals(id));
+        }
+
+        @Override
         public Optional<Member> findByEmail(String email) {
             return Optional.empty();
         }

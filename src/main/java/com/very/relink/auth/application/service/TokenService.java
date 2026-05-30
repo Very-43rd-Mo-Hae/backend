@@ -1,9 +1,24 @@
 package com.very.relink.auth.application.service;
 
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
+import com.very.relink.auth.application.port.out.GetRefreshTokenCachePort;
+import com.very.relink.auth.application.port.out.LoadAuthSessionPort;
+import com.very.relink.auth.application.port.out.RefreshTokenHashPort;
 import com.very.relink.auth.application.port.out.RefreshTokenIssuePort;
+import com.very.relink.auth.application.port.out.SaveAuthSessionPort;
+import com.very.relink.auth.application.port.out.SaveRefreshTokenCachePort;
+import com.very.relink.auth.application.port.out.TokenIssuePort;
 import com.very.relink.auth.application.result.ReissueTokenResponse;
+import com.very.relink.auth.domain.session.AuthSession;
+import com.very.relink.auth.domain.token.AuthTokens;
+import com.very.relink.auth.domain.token.RefreshTokenClaims;
 import com.very.relink.auth.exception.TokenErrorCode;
+import com.very.relink.member.application.port.out.LoadMemberPort;
+import com.very.relink.member.domain.Member;
+import jakarta.transaction.Transactional;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,38 +27,77 @@ import org.springframework.stereotype.Service;
 public class TokenService {
 
     private final RefreshTokenIssuePort refreshTokenIssuePort;
+    private final GetRefreshTokenCachePort getRefreshTokenCachePort;
+    private final SaveRefreshTokenCachePort saveRefreshTokenCachePort;
+    private final RefreshTokenHashPort refreshTokenHashPort;
+    private final LoadAuthSessionPort loadAuthSessionPort;
+    private final SaveAuthSessionPort saveAuthSessionPort;
+    private final TokenIssuePort tokenIssuePort;
+    private final LoadMemberPort loadMemberPort;
 
-    /**
-     * 1. Refresh Token 서명 검증
-     * 2. Refresh Token 만료 검증
-     * 3. type이 REFRESH인지 확인
-     * 4. payload에서 memberId, sessionId, refreshTokenJti 추출 (완료)
-     * 5. Redis refresh:{sessionId} 조회
-     * 6. Redis에 값이 없으면 실패
-     * 7. 요청 refreshToken을 hash 처리
-     * 8. Redis에 저장된 refreshTokenHash와 비교
-     * 9. DB auth_session 조회
-     * 10. DB session 상태가 ACTIVE인지 확인
-     * 11. 새 accessToken 발급
-     * 12. 새 refreshToken 발급
-     * 13. 새 refreshTokenHash 생성
-     * 14. Redis refresh:{sessionId} 값 갱신
-     * 15. DB auth_session의 refreshTokenJti, refreshTokenHash, lastUsedAt 갱신
-     * 16. 새 토큰 응답
-     * @param reIssueTokenRequest RefreshToken을 담은 DTO
-     * @return 재발급 AccessToken 정보
-     */
+    @Transactional
     public ReissueTokenResponse reIssueToken(
             ReIssueTokenRequest reIssueTokenRequest
     ) {
-        String refreshToken = reIssueTokenRequest.refreshToken();
-
-        if(refreshToken == null || refreshToken.isBlank()) {
+        if (reIssueTokenRequest == null) {
             throw TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.toException();
         }
 
-        refreshTokenIssuePort.authenticateRefreshToken(refreshToken);
+        String refreshToken = reIssueTokenRequest.refreshToken();
 
-        return null;
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.toException();
+        }
+
+        RefreshTokenClaims refreshTokenClaims = refreshTokenIssuePort.authenticateRefreshToken(refreshToken);
+        String sessionId = refreshTokenClaims.sessionId();
+
+        String tokenBySessionId = getRefreshTokenCachePort.getTokenBySessionId(sessionId);
+
+        if (tokenBySessionId == null || tokenBySessionId.isBlank()) {
+            throw TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.toException();
+        }
+
+        if (!refreshTokenHashPort.matches(refreshToken, tokenBySessionId)) {
+            throw TokenErrorCode.REFRESH_TOKEN_MISMATCH.toException();
+        }
+
+        AuthSession authSession = loadAuthSessionPort.findBySessionId(sessionId)
+                .orElseThrow(TokenErrorCode.AUTH_SESSION_NOT_FOUND::toException);
+
+        if (!authSession.getRefreshTokenJti().equals(refreshTokenClaims.refreshTokenJti())) {
+            throw TokenErrorCode.REFRESH_TOKEN_MISMATCH.toException();
+        }
+
+        if (!authSession.getMemberId().equals(refreshTokenClaims.memberId())) {
+            throw TokenErrorCode.AUTH_SESSION_NOT_FOUND.toException();
+        }
+
+        if (!authSession.getSessionId().equals(sessionId)) {
+            throw TokenErrorCode.AUTH_SESSION_NOT_FOUND.toException();
+        }
+
+        if (!authSession.isActive(LocalDateTime.now())) {
+            throw TokenErrorCode.AUTH_SESSION_EXPIRED.toException();
+        }
+
+        Member member = loadMemberPort.findById(authSession.getMemberId())
+                .orElseThrow(TokenErrorCode.AUTH_SESSION_NOT_FOUND::toException);
+
+        String newRefreshTokenJti = UUID.randomUUID().toString();
+        AuthTokens authTokens = tokenIssuePort.issue(member, sessionId, newRefreshTokenJti);
+        String newRefreshTokenHash = refreshTokenHashPort.hash(authTokens.refreshToken());
+        Duration refreshTokenTtl = Duration.ofSeconds(authTokens.refreshTokenExpiresIn());
+
+        authSession.rotateRefreshToken(newRefreshTokenJti, newRefreshTokenHash, LocalDateTime.now());
+        saveAuthSessionPort.save(authSession);
+        saveRefreshTokenCachePort.save(sessionId, newRefreshTokenHash, refreshTokenTtl);
+
+        return new ReissueTokenResponse(
+                authTokens.accessToken(),
+                authTokens.refreshToken(),
+                authTokens.accessTokenExpiresIn(),
+                authTokens.refreshTokenExpiresIn()
+        );
     }
 }
