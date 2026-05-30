@@ -16,6 +16,12 @@ public class MemberPersistenceAdapter implements LoadMemberPort, SaveMemberPort 
     private final MemberMapper memberMapper;
 
     @Override
+    public Optional<Member> findById(Long id) {
+        return memberJpaRepository.findById(id)
+                .map(memberMapper::toDomain);
+    }
+
+    @Override
     public Optional<Member> findByEmail(String email) {
         return memberJpaRepository.findByEmail(email)
                 .map(memberMapper::toDomain);
