@@ -30,8 +30,8 @@ public class SecurityConfiguration {
             "/swagger-ui/**",
             "/docs/ncp-api.json",
             "/actuator/**",
-            "/api/v1/auth/social/login"
-
+            "/api/v1/auth/login",
+            "/api/v1/auth/reissue"
     };
 
     @Bean
