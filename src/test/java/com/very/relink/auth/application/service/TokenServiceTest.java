@@ -2,7 +2,9 @@ package com.very.relink.auth.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
+import com.very.relink.auth.application.port.out.DeleteRefreshTokenCachePort;
 import com.very.relink.auth.application.port.out.RefreshTokenHashPort;
 import com.very.relink.auth.application.port.out.RefreshTokenIssuePort;
 import com.very.relink.auth.application.port.out.SaveAuthSessionPort;
@@ -50,14 +52,21 @@ class TokenServiceTest {
                 .build();
         FakeRefreshTokenIssuePort refreshTokenIssuePort = new FakeRefreshTokenIssuePort();
         FakeSaveRefreshTokenCachePort saveRefreshTokenCachePort = new FakeSaveRefreshTokenCachePort();
+        FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort = new FakeDeleteRefreshTokenCachePort();
         FakeSaveAuthSessionPort saveAuthSessionPort = new FakeSaveAuthSessionPort();
         FakeTokenIssuePort tokenIssuePort = new FakeTokenIssuePort();
-        TokenService tokenService = new TokenService(
+        FakeRefreshTokenHashPort refreshTokenHashPort = new FakeRefreshTokenHashPort();
+        RefreshTokenSessionValidator refreshTokenSessionValidator = new RefreshTokenSessionValidator(
                 refreshTokenIssuePort,
                 sessionId -> "hashed-current-refresh-token",
+                refreshTokenHashPort,
+                sessionId -> Optional.of(authSession)
+        );
+        TokenService tokenService = new TokenService(
                 saveRefreshTokenCachePort,
-                new FakeRefreshTokenHashPort(),
-                sessionId -> Optional.of(authSession),
+                deleteRefreshTokenCachePort,
+                refreshTokenHashPort,
+                refreshTokenSessionValidator,
                 saveAuthSessionPort,
                 tokenIssuePort,
                 new FakeLoadMemberPort(member)
@@ -82,6 +91,48 @@ class TokenServiceTest {
         assertThat(saveRefreshTokenCachePort.savedSessionId).isEqualTo("session-id");
         assertThat(saveRefreshTokenCachePort.savedRefreshTokenHash).isEqualTo("hashed-new-refresh-token");
         assertThat(saveRefreshTokenCachePort.savedTtl).isEqualTo(Duration.ofSeconds(1209600L));
+    }
+
+    @Test
+    @DisplayName("Logout changes current session status and deletes refresh token cache.")
+    void logoutCurrentSession() {
+        AuthSession authSession = AuthSession.builder()
+                .id(1L)
+                .sessionId("session-id")
+                .memberId(1L)
+                .deviceId("device-id")
+                .deviceName("device-name")
+                .userAgent("user-agent")
+                .refreshTokenJti("old-jti")
+                .refreshTokenHash("hashed-current-refresh-token")
+                .status(AuthSessionStatus.ACTIVE)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .expiresAt(LocalDateTime.now().plusDays(14))
+                .build();
+        FakeSaveAuthSessionPort saveAuthSessionPort = new FakeSaveAuthSessionPort();
+        FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort = new FakeDeleteRefreshTokenCachePort();
+        FakeRefreshTokenHashPort refreshTokenHashPort = new FakeRefreshTokenHashPort();
+        RefreshTokenSessionValidator refreshTokenSessionValidator = new RefreshTokenSessionValidator(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> "hashed-current-refresh-token",
+                refreshTokenHashPort,
+                sessionId -> Optional.of(authSession)
+        );
+        TokenService tokenService = new TokenService(
+                new FakeSaveRefreshTokenCachePort(),
+                deleteRefreshTokenCachePort,
+                refreshTokenHashPort,
+                refreshTokenSessionValidator,
+                saveAuthSessionPort,
+                new FakeTokenIssuePort(),
+                new FakeLoadMemberPort(null)
+        );
+
+        tokenService.logout(new LogoutRequest("current-refresh-token"));
+
+        assertThat(saveAuthSessionPort.savedAuthSession.getStatus()).isEqualTo(AuthSessionStatus.LOGGED_OUT);
+        assertThat(saveAuthSessionPort.savedAuthSession.getLoggedOutAt()).isNotNull();
+        assertThat(deleteRefreshTokenCachePort.deletedSessionId).isEqualTo("session-id");
     }
 
     private static class FakeRefreshTokenIssuePort implements RefreshTokenIssuePort {
@@ -121,6 +172,16 @@ class TokenServiceTest {
             this.savedSessionId = sessionId;
             this.savedRefreshTokenHash = refreshTokenHash;
             this.savedTtl = ttl;
+        }
+    }
+
+    private static class FakeDeleteRefreshTokenCachePort implements DeleteRefreshTokenCachePort {
+
+        private String deletedSessionId;
+
+        @Override
+        public void deleteBySessionId(String sessionId) {
+            this.deletedSessionId = sessionId;
         }
     }
 

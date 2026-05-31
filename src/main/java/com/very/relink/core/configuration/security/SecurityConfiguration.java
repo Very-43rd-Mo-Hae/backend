@@ -31,7 +31,8 @@ public class SecurityConfiguration {
             "/docs/ncp-api.json",
             "/actuator/**",
             "/api/v1/auth/login",
-            "/api/v1/auth/reissue"
+            "/api/v1/auth/reissue",
+            "/api/v1/auth/logout"
     };
 
     @Bean
