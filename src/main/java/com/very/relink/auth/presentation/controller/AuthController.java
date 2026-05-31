@@ -1,6 +1,7 @@
 package com.very.relink.auth.presentation.controller;
 
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
+import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginResponse;
 import com.very.relink.auth.application.command.SocialLoginCommand;
@@ -65,8 +66,11 @@ public class AuthController implements AuthSwagger {
 
     @Override
     @PostMapping("/logout")
-    public ResponseEntity<RestResponse<Void>> logout() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<RestResponse<Void>> logout(
+            @RequestBody LogoutRequest logoutRequest
+    ) {
+        tokenService.logout(logoutRequest);
+        return ResponseEntity.ok(new RestResponse<>(null));
     }
 
     @Override

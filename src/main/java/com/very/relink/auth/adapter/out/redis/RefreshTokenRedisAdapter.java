@@ -1,16 +1,17 @@
 package com.very.relink.auth.adapter.out.redis;
 
+import com.very.relink.auth.application.port.out.DeleteRefreshTokenCachePort;
 import com.very.relink.auth.application.port.out.GetRefreshTokenCachePort;
 import com.very.relink.auth.application.port.out.SaveRefreshTokenCachePort;
 import java.time.Duration;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class RefreshTokenRedisAdapter implements SaveRefreshTokenCachePort, GetRefreshTokenCachePort {
+public class RefreshTokenRedisAdapter
+        implements SaveRefreshTokenCachePort, GetRefreshTokenCachePort, DeleteRefreshTokenCachePort {
 
     private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:";
 
@@ -31,5 +32,10 @@ public class RefreshTokenRedisAdapter implements SaveRefreshTokenCachePort, GetR
         }
 
         return result.toString();
+    }
+
+    @Override
+    public void deleteBySessionId(String sessionId) {
+        redisTemplate.delete(REFRESH_TOKEN_KEY_PREFIX + sessionId);
     }
 }

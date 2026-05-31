@@ -1,6 +1,7 @@
 package com.very.relink.auth.presentation.swagger;
 
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
+import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginResponse;
 import com.very.relink.auth.application.result.ReissueTokenResponse;
@@ -46,7 +47,7 @@ public interface AuthSwagger {
     @ApiResponse(
             responseCode = "200",
             description = "토큰 재발급 성공",
-            content = @Content(schema = @Schema(implementation = SocialLoginResponse.class))
+            content = @Content(schema = @Schema(implementation = ReissueTokenResponse.class))
     )
     @ApiErrorCode({AuthErrorCode.class, TokenErrorCode.class})
     ResponseEntity<RestResponse<ReissueTokenResponse>> reissue(
@@ -63,7 +64,9 @@ public interface AuthSwagger {
             content = @Content(schema = @Schema(implementation = RestResponse.class))
     )
     @ApiErrorCode({AuthErrorCode.class, TokenErrorCode.class})
-    ResponseEntity<RestResponse<Void>> logout();
+    ResponseEntity<RestResponse<Void>> logout(
+            @RequestBody LogoutRequest logoutRequest
+    );
 
     @Operation(
             summary = "전체 로그아웃",
