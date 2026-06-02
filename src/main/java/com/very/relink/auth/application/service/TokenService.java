@@ -3,6 +3,7 @@ package com.very.relink.auth.application.service;
 import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
 import com.very.relink.auth.application.port.out.DeleteRefreshTokenCachePort;
+import com.very.relink.auth.application.port.out.LoadAuthSessionPort;
 import com.very.relink.auth.application.port.out.RefreshTokenHashPort;
 import com.very.relink.auth.application.port.out.SaveAuthSessionPort;
 import com.very.relink.auth.application.port.out.SaveRefreshTokenCachePort;
@@ -30,6 +31,7 @@ public class TokenService {
     private final RefreshTokenHashPort refreshTokenHashPort;
     private final RefreshTokenSessionValidator refreshTokenSessionValidator;
     private final SaveAuthSessionPort saveAuthSessionPort;
+    private final LoadAuthSessionPort loadAuthSessionPort;
     private final TokenIssuePort tokenIssuePort;
     private final LoadMemberPort loadMemberPort;
 
@@ -80,6 +82,22 @@ public class TokenService {
         authSession.logout(LocalDateTime.now());
         saveAuthSessionPort.save(authSession);
         deleteRefreshTokenCachePort.deleteBySessionId(verifiedSession.sessionId());
+    }
+
+    @Transactional
+    public void logoutAll(Long memberId) {
+        if (memberId == null) {
+            throw TokenErrorCode.INVALID_ACCESS_TOKEN.toException();
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        loadAuthSessionPort.findAllByMemberIdAndStatus(memberId, AuthSessionStatus.ACTIVE)
+                .forEach(authSession -> {
+                    authSession.logout(now);
+                    saveAuthSessionPort.save(authSession);
+                    deleteRefreshTokenCachePort.deleteBySessionId(authSession.getSessionId());
+                });
     }
 
     private void validateActiveSessionForReissue(AuthSession authSession, LocalDateTime now) {

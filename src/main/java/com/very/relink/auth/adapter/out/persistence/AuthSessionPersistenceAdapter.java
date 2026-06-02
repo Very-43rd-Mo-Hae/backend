@@ -3,8 +3,10 @@ package com.very.relink.auth.adapter.out.persistence;
 import com.very.relink.auth.application.port.out.LoadAuthSessionPort;
 import com.very.relink.auth.application.port.out.SaveAuthSessionPort;
 import com.very.relink.auth.domain.session.AuthSession;
+import com.very.relink.auth.domain.session.AuthSessionStatus;
 import com.very.relink.member.adapter.out.persistence.MemberJpaEntity;
 import jakarta.persistence.EntityManager;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,14 @@ public class AuthSessionPersistenceAdapter implements LoadAuthSessionPort, SaveA
     public Optional<AuthSession> findBySessionId(String sessionId) {
         return authSessionJpaRepository.findBySessionId(sessionId)
                 .map(authSessionMapper::toDomain);
+    }
+
+    @Override
+    public List<AuthSession> findAllByMemberIdAndStatus(Long memberId, AuthSessionStatus status) {
+        return authSessionJpaRepository.findAllByMember_IdAndStatus(memberId, status)
+                .stream()
+                .map(authSessionMapper::toDomain)
+                .toList();
     }
 
     @Override

@@ -25,7 +25,10 @@ import com.very.relink.member.application.port.out.LoadMemberPort;
 import com.very.relink.member.domain.Member;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -47,11 +50,14 @@ class TokenServiceTest {
         FakeSaveAuthSessionPort saveAuthSessionPort = new FakeSaveAuthSessionPort();
         FakeTokenIssuePort tokenIssuePort = new FakeTokenIssuePort();
         FakeRefreshTokenHashPort refreshTokenHashPort = new FakeRefreshTokenHashPort();
+        FakeLoadAuthSessionPort loadAuthSessionPort = new FakeLoadAuthSessionPort(
+                sessionId -> Optional.of(authSession)
+        );
         RefreshTokenSessionValidator refreshTokenSessionValidator = new RefreshTokenSessionValidator(
                 refreshTokenIssuePort,
                 sessionId -> CURRENT_REFRESH_TOKEN_HASH,
                 refreshTokenHashPort,
-                sessionId -> Optional.of(authSession)
+                loadAuthSessionPort
         );
         TokenService tokenService = new TokenService(
                 saveRefreshTokenCachePort,
@@ -59,6 +65,7 @@ class TokenServiceTest {
                 refreshTokenHashPort,
                 refreshTokenSessionValidator,
                 saveAuthSessionPort,
+                loadAuthSessionPort,
                 tokenIssuePort,
                 new FakeLoadMemberPort(member)
         );
@@ -327,6 +334,65 @@ class TokenServiceTest {
                 .hasMessage(TokenErrorCode.AUTH_SESSION_EXPIRED.getMessage());
     }
 
+    @Test
+    @DisplayName("현재 회원의 모든 활성 세션을 로그아웃 처리하고 refreshToken 캐시를 삭제한다.")
+    void logoutAllActiveSessions() {
+        AuthSession firstSession = authSession(
+                1L,
+                "session-id-1",
+                1L,
+                AuthSessionStatus.ACTIVE,
+                LocalDateTime.now().plusDays(14)
+        );
+        AuthSession secondSession = authSession(
+                2L,
+                "session-id-2",
+                1L,
+                AuthSessionStatus.ACTIVE,
+                LocalDateTime.now().plusDays(14)
+        );
+        AuthSession otherMemberSession = authSession(
+                3L,
+                "session-id-3",
+                2L,
+                AuthSessionStatus.ACTIVE,
+                LocalDateTime.now().plusDays(14)
+        );
+        AuthSession loggedOutSession = authSession(
+                4L,
+                "session-id-4",
+                1L,
+                AuthSessionStatus.LOGGED_OUT,
+                LocalDateTime.now().plusDays(14)
+        );
+        FakeLoadAuthSessionPort loadAuthSessionPort = new FakeLoadAuthSessionPort(
+                sessionId -> Optional.empty(),
+                List.of(firstSession, secondSession, otherMemberSession, loggedOutSession)
+        );
+        FakeSaveAuthSessionPort saveAuthSessionPort = new FakeSaveAuthSessionPort();
+        FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort = new FakeDeleteRefreshTokenCachePort();
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
+                new FakeRefreshTokenHashPort(),
+                loadAuthSessionPort,
+                member(),
+                deleteRefreshTokenCachePort,
+                saveAuthSessionPort
+        );
+
+        tokenService.logoutAll(1L);
+
+        assertThat(saveAuthSessionPort.savedAuthSessions)
+                .extracting(AuthSession::getSessionId)
+                .containsExactly("session-id-1", "session-id-2");
+        assertThat(saveAuthSessionPort.savedAuthSessions)
+                .extracting(AuthSession::getStatus)
+                .containsExactly(AuthSessionStatus.LOGGED_OUT, AuthSessionStatus.LOGGED_OUT);
+        assertThat(deleteRefreshTokenCachePort.deletedSessionIds)
+                .containsExactly("session-id-1", "session-id-2");
+    }
+
     private static TokenService tokenService(AuthSession authSession, Member member) {
         return tokenService(authSession, member, new FakeDeleteRefreshTokenCachePort(), new FakeSaveAuthSessionPort());
     }
@@ -352,17 +418,37 @@ class TokenServiceTest {
             RefreshTokenIssuePort refreshTokenIssuePort,
             GetRefreshTokenCachePort getRefreshTokenCachePort,
             RefreshTokenHashPort refreshTokenHashPort,
-            LoadAuthSessionPort loadAuthSessionPort,
+            Function<String, Optional<AuthSession>> authSessionLoader,
             Member member
     ) {
         return tokenService(
                 refreshTokenIssuePort,
                 getRefreshTokenCachePort,
                 refreshTokenHashPort,
-                loadAuthSessionPort,
+                new FakeLoadAuthSessionPort(authSessionLoader),
                 member,
                 new FakeDeleteRefreshTokenCachePort(),
                 new FakeSaveAuthSessionPort()
+        );
+    }
+
+    private static TokenService tokenService(
+            RefreshTokenIssuePort refreshTokenIssuePort,
+            GetRefreshTokenCachePort getRefreshTokenCachePort,
+            RefreshTokenHashPort refreshTokenHashPort,
+            Function<String, Optional<AuthSession>> authSessionLoader,
+            Member member,
+            FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort,
+            FakeSaveAuthSessionPort saveAuthSessionPort
+    ) {
+        return tokenService(
+                refreshTokenIssuePort,
+                getRefreshTokenCachePort,
+                refreshTokenHashPort,
+                new FakeLoadAuthSessionPort(authSessionLoader),
+                member,
+                deleteRefreshTokenCachePort,
+                saveAuthSessionPort
         );
     }
 
@@ -388,6 +474,7 @@ class TokenServiceTest {
                 refreshTokenHashPort,
                 refreshTokenSessionValidator,
                 saveAuthSessionPort,
+                loadAuthSessionPort,
                 new FakeTokenIssuePort(),
                 new FakeLoadMemberPort(member)
         );
@@ -410,10 +497,20 @@ class TokenServiceTest {
     }
 
     private static AuthSession authSession(AuthSessionStatus status, LocalDateTime expiresAt) {
+        return authSession(1L, SESSION_ID, 1L, status, expiresAt);
+    }
+
+    private static AuthSession authSession(
+            Long id,
+            String sessionId,
+            Long memberId,
+            AuthSessionStatus status,
+            LocalDateTime expiresAt
+    ) {
         return AuthSession.builder()
-                .id(1L)
-                .sessionId(SESSION_ID)
-                .memberId(1L)
+                .id(id)
+                .sessionId(sessionId)
+                .memberId(memberId)
                 .deviceId("device-id")
                 .deviceName("device-name")
                 .userAgent("user-agent")
@@ -483,21 +580,56 @@ class TokenServiceTest {
     private static class FakeDeleteRefreshTokenCachePort implements DeleteRefreshTokenCachePort {
 
         private String deletedSessionId;
+        private final List<String> deletedSessionIds = new ArrayList<>();
 
         @Override
         public void deleteBySessionId(String sessionId) {
             this.deletedSessionId = sessionId;
+            this.deletedSessionIds.add(sessionId);
         }
     }
 
     private static class FakeSaveAuthSessionPort implements SaveAuthSessionPort {
 
         private AuthSession savedAuthSession;
+        private final List<AuthSession> savedAuthSessions = new ArrayList<>();
 
         @Override
         public AuthSession save(AuthSession authSession) {
             this.savedAuthSession = authSession;
+            this.savedAuthSessions.add(authSession);
             return authSession;
+        }
+    }
+
+    private static class FakeLoadAuthSessionPort implements LoadAuthSessionPort {
+
+        private final Function<String, Optional<AuthSession>> authSessionLoader;
+        private final List<AuthSession> authSessions;
+
+        private FakeLoadAuthSessionPort(Function<String, Optional<AuthSession>> authSessionLoader) {
+            this(authSessionLoader, List.of());
+        }
+
+        private FakeLoadAuthSessionPort(
+                Function<String, Optional<AuthSession>> authSessionLoader,
+                List<AuthSession> authSessions
+        ) {
+            this.authSessionLoader = authSessionLoader;
+            this.authSessions = authSessions;
+        }
+
+        @Override
+        public Optional<AuthSession> findBySessionId(String sessionId) {
+            return authSessionLoader.apply(sessionId);
+        }
+
+        @Override
+        public List<AuthSession> findAllByMemberIdAndStatus(Long memberId, AuthSessionStatus status) {
+            return authSessions.stream()
+                    .filter(authSession -> authSession.getMemberId().equals(memberId))
+                    .filter(authSession -> authSession.getStatus() == status)
+                    .toList();
         }
     }
 
