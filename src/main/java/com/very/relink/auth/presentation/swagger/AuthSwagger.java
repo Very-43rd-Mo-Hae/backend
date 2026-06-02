@@ -1,5 +1,6 @@
 package com.very.relink.auth.presentation.swagger;
 
+import com.very.relink.auth.adapter.in.security.CustomUserDetail;
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
 import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginRequest;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
@@ -78,5 +80,5 @@ public interface AuthSwagger {
             content = @Content(schema = @Schema(implementation = RestResponse.class))
     )
     @ApiErrorCode({AuthErrorCode.class, TokenErrorCode.class})
-    ResponseEntity<RestResponse<Void>> logoutAll();
+    ResponseEntity<RestResponse<Void>> logoutAll(@AuthenticationPrincipal CustomUserDetail customUserDetail);
 }

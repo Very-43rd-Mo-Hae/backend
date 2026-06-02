@@ -1,5 +1,6 @@
 package com.very.relink.auth.presentation.controller;
 
+import com.very.relink.auth.adapter.in.security.CustomUserDetail;
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
 import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.web.SocialLoginRequest;
@@ -13,8 +14,8 @@ import com.very.relink.auth.presentation.swagger.AuthSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -75,7 +76,10 @@ public class AuthController implements AuthSwagger {
 
     @Override
     @PostMapping("/logout/all")
-    public ResponseEntity<RestResponse<Void>> logoutAll() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<RestResponse<Void>> logoutAll(
+            @AuthenticationPrincipal CustomUserDetail customUserDetail
+    ) {
+        tokenService.logoutAll(customUserDetail.getMemberId());
+        return ResponseEntity.ok(new RestResponse<>(null));
     }
 }
