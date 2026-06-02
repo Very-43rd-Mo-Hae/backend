@@ -1,10 +1,13 @@
 package com.very.relink.auth.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.very.relink.auth.adapter.in.token.LogoutRequest;
 import com.very.relink.auth.adapter.in.token.ReIssueTokenRequest;
 import com.very.relink.auth.application.port.out.DeleteRefreshTokenCachePort;
+import com.very.relink.auth.application.port.out.GetRefreshTokenCachePort;
+import com.very.relink.auth.application.port.out.LoadAuthSessionPort;
 import com.very.relink.auth.application.port.out.RefreshTokenHashPort;
 import com.very.relink.auth.application.port.out.RefreshTokenIssuePort;
 import com.very.relink.auth.application.port.out.SaveAuthSessionPort;
@@ -16,6 +19,8 @@ import com.very.relink.auth.domain.session.AuthSessionStatus;
 import com.very.relink.auth.domain.token.AuthTokens;
 import com.very.relink.auth.domain.token.RefreshTokenClaims;
 import com.very.relink.auth.domain.value.OAuth2Provider;
+import com.very.relink.auth.exception.TokenErrorCode;
+import com.very.relink.core.exception.DomainException;
 import com.very.relink.member.application.port.out.LoadMemberPort;
 import com.very.relink.member.domain.Member;
 import java.time.Duration;
@@ -26,30 +31,16 @@ import org.junit.jupiter.api.Test;
 
 class TokenServiceTest {
 
+    private static final String CURRENT_REFRESH_TOKEN = "current-refresh-token";
+    private static final String SESSION_ID = "session-id";
+    private static final String OLD_REFRESH_TOKEN_JTI = "old-jti";
+    private static final String CURRENT_REFRESH_TOKEN_HASH = "hashed-current-refresh-token";
+
     @Test
-    @DisplayName("Reissue rotates refresh token and updates session cache.")
+    @DisplayName("RefreshToken을 재발급 하고 AuthSession을 갱신한다.")
     void reIssueTokenRotatesRefreshToken() {
-        AuthSession authSession = AuthSession.builder()
-                .id(1L)
-                .sessionId("session-id")
-                .memberId(1L)
-                .deviceId("device-id")
-                .deviceName("device-name")
-                .userAgent("user-agent")
-                .refreshTokenJti("old-jti")
-                .refreshTokenHash("hashed-current-refresh-token")
-                .status(AuthSessionStatus.ACTIVE)
-                .createdAt(LocalDateTime.now().minusDays(1))
-                .expiresAt(LocalDateTime.now().plusDays(14))
-                .build();
-        Member member = Member.builder()
-                .id(1L)
-                .email("member@example.com")
-                .name("member")
-                .imageUrl("https://example.com/profile.png")
-                .provider(OAuth2Provider.KAKAO)
-                .providerId("provider-id")
-                .build();
+        AuthSession authSession = activeAuthSession();
+        Member member = member();
         FakeRefreshTokenIssuePort refreshTokenIssuePort = new FakeRefreshTokenIssuePort();
         FakeSaveRefreshTokenCachePort saveRefreshTokenCachePort = new FakeSaveRefreshTokenCachePort();
         FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort = new FakeDeleteRefreshTokenCachePort();
@@ -58,7 +49,7 @@ class TokenServiceTest {
         FakeRefreshTokenHashPort refreshTokenHashPort = new FakeRefreshTokenHashPort();
         RefreshTokenSessionValidator refreshTokenSessionValidator = new RefreshTokenSessionValidator(
                 refreshTokenIssuePort,
-                sessionId -> "hashed-current-refresh-token",
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
                 refreshTokenHashPort,
                 sessionId -> Optional.of(authSession)
         );
@@ -73,7 +64,7 @@ class TokenServiceTest {
         );
 
         ReissueTokenResponse response = tokenService.reIssueToken(
-                new ReIssueTokenRequest("current-refresh-token")
+                new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)
         );
 
         assertThat(response.accessToken()).isEqualTo("new-access-token");
@@ -81,72 +72,386 @@ class TokenServiceTest {
         assertThat(response.accessTokenExpiresIn()).isEqualTo(3600L);
         assertThat(response.refreshTokenExpiresIn()).isEqualTo(1209600L);
         assertThat(tokenIssuePort.issuedMember).isEqualTo(member);
-        assertThat(tokenIssuePort.issuedSessionId).isEqualTo("session-id");
+        assertThat(tokenIssuePort.issuedSessionId).isEqualTo(SESSION_ID);
         assertThat(tokenIssuePort.issuedRefreshTokenJti).isNotBlank();
-        assertThat(tokenIssuePort.issuedRefreshTokenJti).isNotEqualTo("old-jti");
+        assertThat(tokenIssuePort.issuedRefreshTokenJti).isNotEqualTo(OLD_REFRESH_TOKEN_JTI);
         assertThat(saveAuthSessionPort.savedAuthSession.getRefreshTokenJti())
                 .isEqualTo(tokenIssuePort.issuedRefreshTokenJti);
         assertThat(saveAuthSessionPort.savedAuthSession.getRefreshTokenHash())
                 .isEqualTo("hashed-new-refresh-token");
-        assertThat(saveRefreshTokenCachePort.savedSessionId).isEqualTo("session-id");
+        assertThat(saveRefreshTokenCachePort.savedSessionId).isEqualTo(SESSION_ID);
         assertThat(saveRefreshTokenCachePort.savedRefreshTokenHash).isEqualTo("hashed-new-refresh-token");
         assertThat(saveRefreshTokenCachePort.savedTtl).isEqualTo(Duration.ofSeconds(1209600L));
     }
 
     @Test
-    @DisplayName("Logout changes current session status and deletes refresh token cache.")
+    @DisplayName("현재 로그인 세션을 로그아웃 하고, 세션 정보를 제거한다")
     void logoutCurrentSession() {
-        AuthSession authSession = AuthSession.builder()
-                .id(1L)
-                .sessionId("session-id")
-                .memberId(1L)
-                .deviceId("device-id")
-                .deviceName("device-name")
-                .userAgent("user-agent")
-                .refreshTokenJti("old-jti")
-                .refreshTokenHash("hashed-current-refresh-token")
-                .status(AuthSessionStatus.ACTIVE)
-                .createdAt(LocalDateTime.now().minusDays(1))
-                .expiresAt(LocalDateTime.now().plusDays(14))
-                .build();
+        AuthSession authSession = activeAuthSession();
         FakeSaveAuthSessionPort saveAuthSessionPort = new FakeSaveAuthSessionPort();
         FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort = new FakeDeleteRefreshTokenCachePort();
-        FakeRefreshTokenHashPort refreshTokenHashPort = new FakeRefreshTokenHashPort();
-        RefreshTokenSessionValidator refreshTokenSessionValidator = new RefreshTokenSessionValidator(
+        TokenService tokenService = tokenService(authSession, member(), deleteRefreshTokenCachePort, saveAuthSessionPort);
+
+        tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN));
+
+        assertThat(saveAuthSessionPort.savedAuthSession.getStatus()).isEqualTo(AuthSessionStatus.LOGGED_OUT);
+        assertThat(saveAuthSessionPort.savedAuthSession.getLoggedOutAt()).isNotNull();
+        assertThat(deleteRefreshTokenCachePort.deletedSessionId).isEqualTo(SESSION_ID);
+    }
+
+    @Test
+    @DisplayName("재발급 요청이 null이면 실패한다")
+    void reIssueTokenFailsWhenRequestIsNull() {
+        TokenService tokenService = tokenService(activeAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(null))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 refreshToken이 공백이면 실패한다")
+    void reIssueTokenFailsWhenRefreshTokenIsBlank() {
+        TokenService tokenService = tokenService(activeAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(" ")))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 Redis refreshToken hash가 없으면 실패한다")
+    void reIssueTokenFailsWhenRefreshTokenCacheIsMissing() {
+        TokenService tokenService = tokenService(
                 new FakeRefreshTokenIssuePort(),
-                sessionId -> "hashed-current-refresh-token",
-                refreshTokenHashPort,
-                sessionId -> Optional.of(authSession)
+                sessionId -> null,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(activeAuthSession()),
+                member()
         );
-        TokenService tokenService = new TokenService(
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 refreshToken hash가 일치하지 않으면 실패한다")
+    void reIssueTokenFailsWhenRefreshTokenHashMismatches() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> "different-refresh-token-hash",
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(activeAuthSession()),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_MISMATCH.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 DB 세션이 없으면 실패한다")
+    void reIssueTokenFailsWhenAuthSessionIsMissing() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.empty(),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 memberId가 일치하지 않으면 실패한다")
+    void reIssueTokenFailsWhenMemberIdMismatches() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(new RefreshTokenClaims(2L, SESSION_ID, OLD_REFRESH_TOKEN_JTI)),
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(activeAuthSession()),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 refreshTokenJti가 일치하지 않으면 실패한다")
+    void reIssueTokenFailsWhenRefreshTokenJtiMismatches() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(new RefreshTokenClaims(1L, SESSION_ID, "different-jti")),
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(activeAuthSession()),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_MISMATCH.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 세션이 ACTIVE가 아니면 실패한다")
+    void reIssueTokenFailsWhenAuthSessionIsNotActive() {
+        TokenService tokenService = tokenService(loggedOutAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_EXPIRED.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 세션이 만료되었으면 실패한다")
+    void reIssueTokenFailsWhenAuthSessionIsExpired() {
+        TokenService tokenService = tokenService(expiredAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_EXPIRED.getMessage());
+    }
+
+    @Test
+    @DisplayName("재발급 시 회원이 없으면 실패한다")
+    void reIssueTokenFailsWhenMemberIsMissing() {
+        TokenService tokenService = tokenService(activeAuthSession(), null);
+
+        assertThatThrownBy(() -> tokenService.reIssueToken(new ReIssueTokenRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("로그아웃 요청이 null이면 실패한다")
+    void logoutFailsWhenRequestIsNull() {
+        TokenService tokenService = tokenService(activeAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.logout(null))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("로그아웃 refreshToken이 공백이면 실패한다")
+    void logoutFailsWhenRefreshTokenIsBlank() {
+        TokenService tokenService = tokenService(activeAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(" ")))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("로그아웃 시 Redis refreshToken hash가 없으면 실패한다")
+    void logoutFailsWhenRefreshTokenCacheIsMissing() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> null,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(activeAuthSession()),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("로그아웃 시 refreshToken hash가 일치하지 않으면 실패한다")
+    void logoutFailsWhenRefreshTokenHashMismatches() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> "different-refresh-token-hash",
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(activeAuthSession()),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.REFRESH_TOKEN_MISMATCH.getMessage());
+    }
+
+    @Test
+    @DisplayName("로그아웃 시 DB 세션이 없으면 실패한다")
+    void logoutFailsWhenAuthSessionIsMissing() {
+        TokenService tokenService = tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.empty(),
+                member()
+        );
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("이미 로그아웃된 세션은 로그아웃에 실패한다")
+    void logoutFailsWhenAuthSessionAlreadyLoggedOut() {
+        TokenService tokenService = tokenService(loggedOutAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_LOGGED_OUT.getMessage());
+    }
+
+    @Test
+    @DisplayName("폐기된 세션은 로그아웃에 실패한다")
+    void logoutFailsWhenAuthSessionIsRevoked() {
+        TokenService tokenService = tokenService(revokedAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_REVOKED.getMessage());
+    }
+
+    @Test
+    @DisplayName("만료된 세션은 로그아웃에 실패한다")
+    void logoutFailsWhenAuthSessionIsExpired() {
+        TokenService tokenService = tokenService(expiredAuthSession(), member());
+
+        assertThatThrownBy(() -> tokenService.logout(new LogoutRequest(CURRENT_REFRESH_TOKEN)))
+                .isInstanceOf(DomainException.class)
+                .hasMessage(TokenErrorCode.AUTH_SESSION_EXPIRED.getMessage());
+    }
+
+    private static TokenService tokenService(AuthSession authSession, Member member) {
+        return tokenService(authSession, member, new FakeDeleteRefreshTokenCachePort(), new FakeSaveAuthSessionPort());
+    }
+
+    private static TokenService tokenService(
+            AuthSession authSession,
+            Member member,
+            FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort,
+            FakeSaveAuthSessionPort saveAuthSessionPort
+    ) {
+        return tokenService(
+                new FakeRefreshTokenIssuePort(),
+                sessionId -> CURRENT_REFRESH_TOKEN_HASH,
+                new FakeRefreshTokenHashPort(),
+                sessionId -> Optional.of(authSession),
+                member,
+                deleteRefreshTokenCachePort,
+                saveAuthSessionPort
+        );
+    }
+
+    private static TokenService tokenService(
+            RefreshTokenIssuePort refreshTokenIssuePort,
+            GetRefreshTokenCachePort getRefreshTokenCachePort,
+            RefreshTokenHashPort refreshTokenHashPort,
+            LoadAuthSessionPort loadAuthSessionPort,
+            Member member
+    ) {
+        return tokenService(
+                refreshTokenIssuePort,
+                getRefreshTokenCachePort,
+                refreshTokenHashPort,
+                loadAuthSessionPort,
+                member,
+                new FakeDeleteRefreshTokenCachePort(),
+                new FakeSaveAuthSessionPort()
+        );
+    }
+
+    private static TokenService tokenService(
+            RefreshTokenIssuePort refreshTokenIssuePort,
+            GetRefreshTokenCachePort getRefreshTokenCachePort,
+            RefreshTokenHashPort refreshTokenHashPort,
+            LoadAuthSessionPort loadAuthSessionPort,
+            Member member,
+            FakeDeleteRefreshTokenCachePort deleteRefreshTokenCachePort,
+            FakeSaveAuthSessionPort saveAuthSessionPort
+    ) {
+        RefreshTokenSessionValidator refreshTokenSessionValidator = new RefreshTokenSessionValidator(
+                refreshTokenIssuePort,
+                getRefreshTokenCachePort,
+                refreshTokenHashPort,
+                loadAuthSessionPort
+        );
+
+        return new TokenService(
                 new FakeSaveRefreshTokenCachePort(),
                 deleteRefreshTokenCachePort,
                 refreshTokenHashPort,
                 refreshTokenSessionValidator,
                 saveAuthSessionPort,
                 new FakeTokenIssuePort(),
-                new FakeLoadMemberPort(null)
+                new FakeLoadMemberPort(member)
         );
-
-        tokenService.logout(new LogoutRequest("current-refresh-token"));
-
-        assertThat(saveAuthSessionPort.savedAuthSession.getStatus()).isEqualTo(AuthSessionStatus.LOGGED_OUT);
-        assertThat(saveAuthSessionPort.savedAuthSession.getLoggedOutAt()).isNotNull();
-        assertThat(deleteRefreshTokenCachePort.deletedSessionId).isEqualTo("session-id");
     }
 
-    private static class FakeRefreshTokenIssuePort implements RefreshTokenIssuePort {
-
-        @Override
-        public String issueRefreshToken(Long memberId, String sessionId, String refreshTokenJti) {
-            return "new-refresh-token";
-        }
-
-        @Override
-        public RefreshTokenClaims authenticateRefreshToken(String refreshToken) {
-            return new RefreshTokenClaims(1L, "session-id", "old-jti");
-        }
+    private static AuthSession activeAuthSession() {
+        return authSession(AuthSessionStatus.ACTIVE, LocalDateTime.now().plusDays(14));
     }
+
+    private static AuthSession loggedOutAuthSession() {
+        return authSession(AuthSessionStatus.LOGGED_OUT, LocalDateTime.now().plusDays(14));
+    }
+
+    private static AuthSession revokedAuthSession() {
+        return authSession(AuthSessionStatus.REVOKED, LocalDateTime.now().plusDays(14));
+    }
+
+    private static AuthSession expiredAuthSession() {
+        return authSession(AuthSessionStatus.ACTIVE, LocalDateTime.now().minusSeconds(1));
+    }
+
+    private static AuthSession authSession(AuthSessionStatus status, LocalDateTime expiresAt) {
+        return AuthSession.builder()
+                .id(1L)
+                .sessionId(SESSION_ID)
+                .memberId(1L)
+                .deviceId("device-id")
+                .deviceName("device-name")
+                .userAgent("user-agent")
+                .refreshTokenJti(OLD_REFRESH_TOKEN_JTI)
+                .refreshTokenHash(CURRENT_REFRESH_TOKEN_HASH)
+                .status(status)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .expiresAt(expiresAt)
+                .build();
+    }
+
+    private static Member member() {
+        return Member.builder()
+                .id(1L)
+                .email("member@example.com")
+                .name("member")
+                .imageUrl("https://example.com/profile.png")
+                .provider(OAuth2Provider.KAKAO)
+                .providerId("provider-id")
+                .build();
+    }
+
+    private record FakeRefreshTokenIssuePort(RefreshTokenClaims refreshTokenClaims) implements RefreshTokenIssuePort {
+
+            private FakeRefreshTokenIssuePort() {
+                this(new RefreshTokenClaims(1L, SESSION_ID, OLD_REFRESH_TOKEN_JTI));
+            }
+
+        @Override
+            public String issueRefreshToken(Long memberId, String sessionId, String refreshTokenJti) {
+                return "new-refresh-token";
+            }
+
+            @Override
+            public RefreshTokenClaims authenticateRefreshToken(String refreshToken) {
+                return refreshTokenClaims;
+            }
+        }
 
     private static class FakeRefreshTokenHashPort implements RefreshTokenHashPort {
 
@@ -221,7 +526,7 @@ class TokenServiceTest {
 
         @Override
         public Optional<Member> findById(Long id) {
-            return Optional.of(member).filter(value -> value.getId().equals(id));
+            return Optional.ofNullable(member).filter(value -> value.getId().equals(id));
         }
 
         @Override
