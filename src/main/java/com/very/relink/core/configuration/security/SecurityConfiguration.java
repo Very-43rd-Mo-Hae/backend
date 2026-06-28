@@ -32,7 +32,8 @@ public class SecurityConfiguration {
             "/actuator/**",
             "/api/v1/auth/login",
             "/api/v1/auth/reissue",
-            "/api/v1/auth/logout"
+            "/api/v1/auth/logout",
+            "/api/v1/push-subscriptions/public-key"
     };
 
     @Bean

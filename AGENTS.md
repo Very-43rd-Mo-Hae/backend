@@ -682,6 +682,8 @@ Unless the user says otherwise:
 - Prefer code that is easy to explain in interviews and team reviews.
 - Respect the assumption that security-sensitive `yml` files may not be committed.
 - Do not modify generated files or build artifacts.
+- When time is short, keep hexagonal structure practical and shallow: follow existing domain/application/adapter boundaries, but avoid adding extra use-case interfaces, adapters, or test scaffolding unless they clearly reduce risk.
+- If the user explicitly asks to minimize tests, do not add broad test suites; verify with the narrowest useful build/compile command and explain any remaining manual-test risk.
 
 ---
 

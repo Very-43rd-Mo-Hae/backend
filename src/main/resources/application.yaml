@@ -65,3 +65,13 @@ social:
       web: ${GOOGLE_CLIENT_ID_WEB}
       android: ${GOOGLE_CLIENT_ID_ANDROID}
       ios: ${GOOGLE_CLIENT_ID_IOS}
+
+notification:
+  web-push:
+    enabled: ${WEB_PUSH_ENABLED:true}
+    subject: ${WEB_PUSH_SUBJECT:mailto:admin@example.com}
+    public-key: ${WEB_PUSH_PUBLIC_KEY:}
+    private-key: ${WEB_PUSH_PRIVATE_KEY:}
+  redis:
+    dedup-prefix: ${NOTIFICATION_DEDUP_PREFIX:notification:dedup}
+    dedup-ttl-seconds: ${NOTIFICATION_DEDUP_TTL_SECONDS:300}

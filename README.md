@@ -48,3 +48,55 @@ sequenceDiagram
     JWT-->>API: AuthTokens
     API-->>App: memberId, accessToken, expiresIn
 ```
+
+## Web Push
+
+### Environment variables
+
+```properties
+WEB_PUSH_ENABLED=true
+WEB_PUSH_SUBJECT=mailto:admin@example.com
+WEB_PUSH_PUBLIC_KEY=your-vapid-public-key
+WEB_PUSH_PRIVATE_KEY=your-vapid-private-key
+NOTIFICATION_DEDUP_PREFIX=notification:dedup
+NOTIFICATION_DEDUP_TTL_SECONDS=300
+```
+
+### VAPID key generation
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+### APIs
+
+- `GET /api/v1/push-subscriptions/public-key`: returns the VAPID public key.
+- `POST /api/v1/push-subscriptions`: registers or refreshes the current user's browser subscription.
+- `DELETE /api/v1/push-subscriptions`: disables the current user's subscription by endpoint.
+- `POST /api/v1/notifications/test`: sends a test Web Push notification to the current user.
+
+### Service worker example
+
+```js
+self.addEventListener("push", (event) => {
+  const payload = event.data ? event.data.json() : {};
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      data: payload.data || { linkUrl: payload.linkUrl },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const linkUrl = event.notification.data?.linkUrl || "/";
+  event.waitUntil(clients.openWindow(linkUrl));
+});
+```
+
+### Notes
+
+- iOS Web Push requires an installed PWA and user permission. Browser support and permission UX differ by iOS version.
+- `notification_target` stores Web Push subscriptions only. Notification history and delivery logs are left as future extensions.
+- When Redis deduplication fails, sending continues and only a warning is logged.

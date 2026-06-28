@@ -25,6 +25,10 @@ apply from: "gradle/dependencies/test.gradle"
 apply from: "gradle/dependencies/lombok.gradle"
 apply from: "gradle/dependencies/google.gradle"
 
+dependencies {
+    implementation 'nl.martijndwars:web-push:5.1.1'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }
