@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 @Configuration
 @OpenAPIDefinition(
-        info = @Info(title = "Re-Link API", description = "ReLink API 명세서", version = "v1.0.0")
+        info = @Info(title = "모해 v1 API", description = "모해 API 명세서", version = "v1.0.0")
 )
 public class SwaggerConfiguration {
     @Value("${springdoc.server-url}")
