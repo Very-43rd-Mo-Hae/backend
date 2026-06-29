@@ -42,16 +42,24 @@ public class SocialLoginService implements SocialLoginUseCase {
         }
 
         SocialLoginUserInfo userInfo = resolver.resolve(socialLoginCommand);
+        String name = resolveName(socialLoginCommand.name(), userInfo.name());
 
         return oAuth2LoginUseCase.login(new OAuth2LoginCommand(
                 userInfo.oAuth2Provider(),
                 userInfo.providerId(),
                 userInfo.email(),
-                userInfo.name(),
+                name,
                 userInfo.imageUrl(),
                 socialLoginCommand.deviceId(),
                 socialLoginCommand.deviceName(),
                 socialLoginCommand.userAgent()
         ));
+    }
+
+    private String resolveName(String requestedName, String socialName) {
+        if (requestedName != null && !requestedName.isBlank()) {
+            return requestedName;
+        }
+        return socialName;
     }
 }

@@ -9,6 +9,7 @@ import com.very.relink.notification.application.command.RegisterWebPushSubscript
 import com.very.relink.notification.application.port.in.CurrentUserProvider;
 import com.very.relink.notification.application.service.WebPushNotificationService;
 import com.very.relink.notification.infrastructure.config.NotificationProperties;
+import com.very.relink.notification.presentation.swagger.WebPushSubscriptionSwagger;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +24,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/push-subscriptions")
-public class WebPushSubscriptionController {
+public class WebPushSubscriptionController implements WebPushSubscriptionSwagger {
 
     private final WebPushNotificationService webPushNotificationService;
     private final CurrentUserProvider currentUserProvider;
     private final NotificationProperties notificationProperties;
 
     @PostMapping
+    @Override
     public ResponseEntity<RestResponse<Void>> register(
             @Valid @RequestBody WebPushSubscriptionRequest request,
             @RequestHeader(value = "User-Agent", required = false) String userAgent
@@ -47,6 +49,7 @@ public class WebPushSubscriptionController {
     }
 
     @DeleteMapping
+    @Override
     public ResponseEntity<RestResponse<Void>> disable(
             @Valid @RequestBody WebPushSubscriptionDeleteRequest request
     ) {
@@ -56,6 +59,7 @@ public class WebPushSubscriptionController {
     }
 
     @GetMapping("/public-key")
+    @Override
     public ResponseEntity<RestResponse<WebPushPublicKeyResponse>> getPublicKey() {
         return ResponseEntity.ok(new RestResponse<>(
                 new WebPushPublicKeyResponse(notificationProperties.webPush().publicKey())

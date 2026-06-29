@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.HandlerMethod;
 
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,11 +52,30 @@ public class SwaggerConfiguration {
     public OperationCustomizer operationCustomizer() {
         return (Operation operation, HandlerMethod handlerMethod) -> {
             ApiErrorCode apiErrorCode = handlerMethod.getMethodAnnotation(ApiErrorCode.class);
+            if (apiErrorCode == null) {
+                apiErrorCode = findApiErrorCodeFromInterface(handlerMethod);
+            }
             if (apiErrorCode != null) {
                 generateErrorCodeResponseExample(operation, apiErrorCode.value());
             }
             return operation;
         };
+    }
+
+    private ApiErrorCode findApiErrorCodeFromInterface(HandlerMethod handlerMethod) {
+        Method method = handlerMethod.getMethod();
+        for (Class<?> interfaceType : handlerMethod.getBeanType().getInterfaces()) {
+            try {
+                Method interfaceMethod = interfaceType.getMethod(method.getName(), method.getParameterTypes());
+                ApiErrorCode apiErrorCode = interfaceMethod.getAnnotation(ApiErrorCode.class);
+                if (apiErrorCode != null) {
+                    return apiErrorCode;
+                }
+            } catch (NoSuchMethodException ignored) {
+                // This interface does not declare the handler method.
+            }
+        }
+        return null;
     }
 
     private void generateErrorCodeResponseExample(Operation operation, Class<? extends BaseErrorCode>[] types) {

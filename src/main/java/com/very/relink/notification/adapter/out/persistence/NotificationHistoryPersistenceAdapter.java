@@ -1,13 +1,20 @@
 package com.very.relink.notification.adapter.out.persistence;
 
 import com.very.relink.notification.application.port.out.NotificationHistoryCommandPort;
+import com.very.relink.notification.domain.model.NotificationChannel;
 import com.very.relink.notification.domain.model.NotificationDelivery;
 import com.very.relink.notification.domain.model.NotificationMessage;
 import com.very.relink.notification.domain.model.NotificationOutbox;
 import com.very.relink.notification.domain.model.NotificationOutboxStatus;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.jooq.DSLContext;
+import org.jooq.Record;
 import org.springframework.stereotype.Component;
+
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.table;
 
 @Component
 @RequiredArgsConstructor
@@ -17,6 +24,7 @@ public class NotificationHistoryPersistenceAdapter implements NotificationHistor
     private final NotificationOutboxJpaRepository notificationOutboxJpaRepository;
     private final NotificationDeliveryJpaRepository notificationDeliveryJpaRepository;
     private final NotificationHistoryMapper notificationHistoryMapper;
+    private final DSLContext dslContext;
 
     @Override
     public NotificationMessage saveNotification(NotificationMessage notification) {
@@ -32,16 +40,51 @@ public class NotificationHistoryPersistenceAdapter implements NotificationHistor
 
     @Override
     public List<NotificationOutbox> claimPendingOutboxes(int limit) {
-        return notificationOutboxJpaRepository.findTop50ByStatusOrderByCreatedAtAsc(NotificationOutboxStatus.PENDING)
-                .stream()
-                .limit(limit)
-                .peek(entity -> {
-                    entity.setStatus(NotificationOutboxStatus.PROCESSING);
-                    entity.setAttemptCount(entity.getAttemptCount() + 1);
-                })
-                .map(notificationOutboxJpaRepository::save)
-                .map(notificationHistoryMapper::toDomain)
-                .toList();
+        if (limit <= 0) {
+            return List.of();
+        }
+
+        return dslContext.transactionResult(configuration -> {
+            DSLContext transactionDsl = configuration.dsl();
+            List<NotificationOutbox> outboxes = transactionDsl
+                    .select(
+                            field("notification_outbox_id", Long.class),
+                            field("notification_id", Long.class),
+                            field("user_id", Long.class),
+                            field("channel", String.class),
+                            field("title", String.class),
+                            field("body", String.class),
+                            field("link_url", String.class),
+                            field("deduplication_id", Long.class),
+                            field("data_json", String.class),
+                            field("status", String.class),
+                            field("attempt_count", Integer.class),
+                            field("failure_reason", String.class)
+                    )
+                    .from(table("notification_outbox"))
+                    .where(field("status", String.class).eq(NotificationOutboxStatus.PENDING.name()))
+                    .orderBy(field("created_at").asc())
+                    .limit(limit)
+                    .forUpdate()
+                    .fetch(this::toNotificationOutbox);
+
+            List<Long> outboxIds = outboxes.stream()
+                    .map(NotificationOutbox::getId)
+                    .toList();
+            if (!outboxIds.isEmpty()) {
+                transactionDsl
+                        .update(table("notification_outbox"))
+                        .set(field("status", String.class), NotificationOutboxStatus.PROCESSING.name())
+                        .set(field("attempt_count", Integer.class), field("attempt_count", Integer.class).plus(1))
+                        .set(field("updated_at", LocalDateTime.class), LocalDateTime.now())
+                        .where(field("notification_outbox_id", Long.class).in(outboxIds))
+                        .execute();
+            }
+
+            return outboxes.stream()
+                    .map(this::toProcessingOutbox)
+                    .toList();
+        });
     }
 
     @Override
@@ -65,11 +108,46 @@ public class NotificationHistoryPersistenceAdapter implements NotificationHistor
     }
 
     private void updateOutbox(Long outboxId, NotificationOutboxStatus status, String reason) {
-        notificationOutboxJpaRepository.findById(outboxId)
-                .ifPresent(outbox -> {
-                    outbox.setStatus(status);
-                    outbox.setFailureReason(reason);
-                    notificationOutboxJpaRepository.save(outbox);
-                });
+        dslContext
+                .update(table("notification_outbox"))
+                .set(field("status", String.class), status.name())
+                .set(field("failure_reason", String.class), reason)
+                .set(field("updated_at", LocalDateTime.class), LocalDateTime.now())
+                .where(field("notification_outbox_id", Long.class).eq(outboxId))
+                .execute();
+    }
+
+    private NotificationOutbox toNotificationOutbox(Record record) {
+        return NotificationOutbox.builder()
+                .id(record.get(field("notification_outbox_id", Long.class)))
+                .notificationId(record.get(field("notification_id", Long.class)))
+                .userId(record.get(field("user_id", Long.class)))
+                .channel(NotificationChannel.valueOf(record.get(field("channel", String.class))))
+                .title(record.get(field("title", String.class)))
+                .body(record.get(field("body", String.class)))
+                .linkUrl(record.get(field("link_url", String.class)))
+                .deduplicationId(record.get(field("deduplication_id", Long.class)))
+                .dataJson(record.get(field("data_json", String.class)))
+                .status(NotificationOutboxStatus.valueOf(record.get(field("status", String.class))))
+                .attemptCount(record.get(field("attempt_count", Integer.class)))
+                .failureReason(record.get(field("failure_reason", String.class)))
+                .build();
+    }
+
+    private NotificationOutbox toProcessingOutbox(NotificationOutbox outbox) {
+        return NotificationOutbox.builder()
+                .id(outbox.getId())
+                .notificationId(outbox.getNotificationId())
+                .userId(outbox.getUserId())
+                .channel(outbox.getChannel())
+                .title(outbox.getTitle())
+                .body(outbox.getBody())
+                .linkUrl(outbox.getLinkUrl())
+                .deduplicationId(outbox.getDeduplicationId())
+                .dataJson(outbox.getDataJson())
+                .status(NotificationOutboxStatus.PROCESSING)
+                .attemptCount(outbox.getAttemptCount() + 1)
+                .failureReason(outbox.getFailureReason())
+                .build();
     }
 }

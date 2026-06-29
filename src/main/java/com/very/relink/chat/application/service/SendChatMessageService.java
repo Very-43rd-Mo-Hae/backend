@@ -1,7 +1,5 @@
 package com.very.relink.chat.application.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.very.relink.chat.application.command.ChatCommands.SendChatMessageAttachmentCommand;
 import com.very.relink.chat.application.command.ChatCommands.SendChatMessageCommand;
 import com.very.relink.chat.application.response.ChatResponses.ChatMessageAttachmentResponse;
@@ -24,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class SendChatMessageService {
     private final ChatMessageJpaRepository chatMessageJpaRepository;
     private final ChatMessageAttachmentJpaRepository chatMessageAttachmentJpaRepository;
     private final ChatOutboxEventJpaRepository chatOutboxEventJpaRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public SendChatMessageResponse send(SendChatMessageCommand command) {
@@ -116,7 +116,7 @@ public class SendChatMessageService {
     private String toJson(ChatMessageCreatedPayload payload) {
         try {
             return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new IllegalStateException("채팅 메시지 outbox payload 직렬화에 실패했습니다.", ex);
         }
     }

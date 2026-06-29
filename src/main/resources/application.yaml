@@ -27,6 +27,14 @@ spring:
     jdbc:
       initialize-schema: never
 
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update} # none, create, create-drop, update, validate
+    properties:
+      hibernate:
+        format_sql: true
+
 batch:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -34,14 +42,11 @@ batch:
     username: ${BATCH_DB_USER_NAME:${DB_USER_NAME:root}}
     password: ${BATCH_DB_PASSWORD:${DB_PASSWORD:1234}}
 
-  jpa:
-    database-platform: org.hibernate.dialect.MySQLDialect
-    hibernate:
-      ddl-auto: create # none, create, create-drop, update, validate
-    properties:
-      hibernate:
-        format_sql: true
-        show_sql: true
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
 
 springdoc:
   server-url: http://localhost:8080
@@ -51,7 +56,7 @@ springdoc:
 
 jwt:
   secret: ${JWT_SECRET:relink-local-development-secret-key-should-be-changed}
-  access-token-expiration-seconds: 900
+  access-token-expiration-seconds: 9000
   refresh-token-expiration-seconds: 1209600
 
 cors:
@@ -70,10 +75,9 @@ cors:
     headers:
       - "*"
     exposed-headers:
-      - Set-Cookie
       - Authorization
     max-age: 3600
-    credentials: true
+    credentials: false
 
 social:
   kakao:
@@ -97,6 +101,13 @@ notification:
     enabled: ${NOTIFICATION_OUTBOX_ENABLED:true}
     batch-size: ${NOTIFICATION_OUTBOX_BATCH_SIZE:50}
     fixed-delay-millis: ${NOTIFICATION_OUTBOX_FIXED_DELAY_MILLIS:5000}
+
+chat:
+  redis:
+    stream-key: ${CHAT_REDIS_STREAM_KEY:chat:events}
+  outbox:
+    enabled: ${CHAT_OUTBOX_ENABLED:true}
+    fixed-delay-millis: ${CHAT_OUTBOX_FIXED_DELAY_MILLIS:1000}
 
 database:
   schema:

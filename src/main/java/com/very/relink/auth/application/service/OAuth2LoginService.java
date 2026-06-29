@@ -24,6 +24,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OAuth2LoginService implements OAuth2LoginUseCase {
 
+    private static final String TEMPORARY_NICKNAME_PREFIX = "temp-nickname-";
+
     private final LoadMemberPort loadMemberPort;
     private final SaveMemberPort saveMemberPort;
     private final TokenIssuePort tokenIssuePort;
@@ -46,7 +48,7 @@ public class OAuth2LoginService implements OAuth2LoginUseCase {
                 .orElseGet(() -> saveMemberPort.save(
                         Member.create(
                                 oAuth2LoginCommand.email(),
-                                oAuth2LoginCommand.name(),
+                                resolveName(oAuth2LoginCommand.name()),
                                 oAuth2LoginCommand.imageUrl(),
                                 oAuth2LoginCommand.provider(),
                                 providerId
@@ -74,5 +76,12 @@ public class OAuth2LoginService implements OAuth2LoginUseCase {
         saveRefreshTokenCachePort.save(sessionId, refreshTokenHash, refreshTokenTtl);
 
         return new OAuth2LoginResult(member.getId(), authTokens);
+    }
+
+    private String resolveName(String name) {
+        if (name != null && !name.isBlank()) {
+            return name;
+        }
+        return TEMPORARY_NICKNAME_PREFIX + UUID.randomUUID();
     }
 }

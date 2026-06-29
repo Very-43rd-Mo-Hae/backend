@@ -6,6 +6,7 @@ import com.very.relink.notification.application.command.SendWebPushNotificationC
 import com.very.relink.notification.application.dto.WebPushSendResult;
 import com.very.relink.notification.application.port.in.CurrentUserProvider;
 import com.very.relink.notification.application.service.WebPushNotificationService;
+import com.very.relink.notification.presentation.swagger.NotificationTestSwagger;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,12 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/notifications")
-public class NotificationTestController {
+public class NotificationTestController implements NotificationTestSwagger {
 
     private final WebPushNotificationService webPushNotificationService;
     private final CurrentUserProvider currentUserProvider;
 
     @PostMapping("/test")
+    @Override
     public ResponseEntity<RestResponse<WebPushSendResult>> sendTest(
             @Valid @RequestBody TestWebPushNotificationRequest request
     ) {

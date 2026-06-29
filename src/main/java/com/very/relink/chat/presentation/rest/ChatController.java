@@ -20,6 +20,7 @@ import com.very.relink.chat.application.service.IssueChatAttachmentPresignedUrlS
 import com.very.relink.chat.application.service.MarkChatRoomAsReadService;
 import com.very.relink.chat.application.service.SendChatMessageService;
 import com.very.relink.chat.domain.ChatEnums.MessageType;
+import com.very.relink.chat.presentation.swagger.ChatSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import com.very.relink.notification.application.port.in.CurrentUserProvider;
 import jakarta.validation.Valid;
@@ -42,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/chat")
-public class ChatController {
+public class ChatController implements ChatSwagger {
 
     private final CurrentUserProvider currentUserProvider;
     private final CreateDirectChatRoomService createDirectChatRoomService;
@@ -54,6 +55,7 @@ public class ChatController {
     private final IssueChatAttachmentPresignedUrlService issueChatAttachmentPresignedUrlService;
 
     @PostMapping("/rooms/direct")
+    @Override
     public ResponseEntity<RestResponse<CreateChatRoomResponse>> createDirectRoom(@Valid @RequestBody CreateDirectChatRoomRequest request) {
         Long requesterId = currentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(new RestResponse<>(createDirectChatRoomService.create(
@@ -62,6 +64,7 @@ public class ChatController {
     }
 
     @PostMapping("/rooms/group")
+    @Override
     public ResponseEntity<RestResponse<CreateChatRoomResponse>> createGroupRoom(@Valid @RequestBody CreateGroupChatRoomRequest request) {
         Long requesterId = currentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(new RestResponse<>(createGroupChatRoomService.create(
@@ -70,11 +73,13 @@ public class ChatController {
     }
 
     @GetMapping("/rooms")
+    @Override
     public ResponseEntity<RestResponse<ChatRoomsResponse>> getRooms() {
         return ResponseEntity.ok(new RestResponse<>(getChatRoomsQueryService.getRooms(currentUserProvider.getCurrentUserId())));
     }
 
     @GetMapping("/rooms/{roomId}/messages")
+    @Override
     public ResponseEntity<RestResponse<ChatMessagesResponse>> getMessages(
             @PathVariable Long roomId,
             @RequestParam(required = false) Long cursor,
@@ -85,6 +90,7 @@ public class ChatController {
     }
 
     @PostMapping("/rooms/{roomId}/messages")
+    @Override
     public ResponseEntity<RestResponse<SendChatMessageResponse>> sendMessage(
             @PathVariable Long roomId,
             @Valid @RequestBody SendChatMessageRequest request
@@ -114,6 +120,7 @@ public class ChatController {
     }
 
     @PatchMapping("/rooms/{roomId}/read")
+    @Override
     public ResponseEntity<RestResponse<MarkChatRoomAsReadResponse>> markAsRead(
             @PathVariable Long roomId,
             @Valid @RequestBody MarkChatRoomAsReadRequest request
@@ -125,6 +132,7 @@ public class ChatController {
     }
 
     @PostMapping("/attachments/presigned-url")
+    @Override
     public ResponseEntity<RestResponse<IssueChatAttachmentPresignedUrlResponse>> issuePresignedUrl(
             @Valid @RequestBody IssueChatAttachmentPresignedUrlRequest request
     ) {

@@ -69,4 +69,16 @@ public class ChatOutboxEventJpaEntity {
                 .retryCount(0)
                 .build();
     }
+
+    public void markPublished(LocalDateTime publishedAt) {
+        this.status = OutboxStatus.PUBLISHED;
+        this.publishedAt = publishedAt;
+    }
+
+    public void recordPublishFailure(int maxRetryCount) {
+        this.retryCount++;
+        if (this.retryCount >= maxRetryCount) {
+            this.status = OutboxStatus.FAILED;
+        }
+    }
 }

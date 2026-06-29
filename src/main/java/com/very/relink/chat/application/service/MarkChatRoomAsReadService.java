@@ -1,7 +1,5 @@
 package com.very.relink.chat.application.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.very.relink.chat.application.command.ChatCommands.MarkChatRoomAsReadCommand;
 import com.very.relink.chat.application.response.ChatResponses.ChatRoomReadPayload;
 import com.very.relink.chat.application.response.ChatResponses.MarkChatRoomAsReadResponse;
@@ -17,6 +15,8 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +26,7 @@ public class MarkChatRoomAsReadService {
     private final ChatMessageJpaRepository chatMessageJpaRepository;
     private final ChatReadCursorJpaRepository chatReadCursorJpaRepository;
     private final ChatOutboxEventJpaRepository chatOutboxEventJpaRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public MarkChatRoomAsReadResponse markAsRead(MarkChatRoomAsReadCommand command) {
@@ -61,7 +61,7 @@ public class MarkChatRoomAsReadService {
     private String toJson(ChatRoomReadPayload payload) {
         try {
             return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new IllegalStateException("채팅 읽음 outbox payload 직렬화에 실패했습니다.", ex);
         }
     }
