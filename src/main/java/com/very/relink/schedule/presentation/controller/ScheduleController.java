@@ -5,6 +5,7 @@ import com.very.relink.notification.application.port.in.CurrentUserProvider;
 import com.very.relink.schedule.application.command.UpdateScheduleSlotsCommand;
 import com.very.relink.schedule.application.command.UpdateScheduleSlotsCommand.ScheduleSlotUpdateCommand;
 import com.very.relink.schedule.application.response.ScheduleResponses.UpdateScheduleSlotsResponse;
+import com.very.relink.schedule.application.response.ScheduleResponses.UpcomingScheduleStatusResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.WeeklyScheduleResponse;
 import com.very.relink.schedule.application.service.ScheduleService;
 import com.very.relink.schedule.domain.ScheduleSlotStatus;
@@ -41,6 +42,16 @@ public class ScheduleController implements ScheduleSwagger {
         Long memberId = currentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(new RestResponse<>(
                 scheduleService.getWeeklySchedule(memberId, date)
+        ));
+    }
+
+    @GetMapping("/status")
+    @Override
+    public ResponseEntity<RestResponse<UpcomingScheduleStatusResponse>> getUpcomingStatuses(
+            @RequestParam List<Long> memberIds
+    ) {
+        return ResponseEntity.ok(new RestResponse<>(
+                scheduleService.getUpcomingStatuses(memberIds)
         ));
     }
 

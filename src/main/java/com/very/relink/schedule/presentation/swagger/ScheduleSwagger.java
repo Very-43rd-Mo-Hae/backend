@@ -3,6 +3,7 @@ package com.very.relink.schedule.presentation.swagger;
 import com.very.relink.core.configuration.swagger.ApiErrorCode;
 import com.very.relink.core.presentation.RestResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.UpdateScheduleSlotsResponse;
+import com.very.relink.schedule.application.response.ScheduleResponses.UpcomingScheduleStatusResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.WeeklyScheduleResponse;
 import com.very.relink.schedule.exception.ScheduleErrorCode;
 import com.very.relink.schedule.presentation.controller.ScheduleController.UpdateScheduleSlotsRequest;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +37,21 @@ public interface ScheduleSwagger {
     ResponseEntity<RestResponse<WeeklyScheduleResponse>> getWeeklySchedule(
             @Parameter(description = "조회 기준 날짜. 이 날짜가 포함된 주간 일정이 반환됩니다.", example = "2026-06-29")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    );
+
+    @Operation(
+            summary = "현재 이후 4시간 일정 상태 조회",
+            description = "여러 회원 id를 받아 현재 시간이 포함된 슬롯부터 앞으로 4시간의 일정 상태를 회원별로 반환합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "현재 이후 일정 상태 조회 성공",
+            content = @Content(schema = @Schema(implementation = UpcomingScheduleStatusResponse.class))
+    )
+    @ApiErrorCode({ScheduleErrorCode.class})
+    ResponseEntity<RestResponse<UpcomingScheduleStatusResponse>> getUpcomingStatuses(
+            @Parameter(description = "조회할 회원 id 목록. memberIds=1&memberIds=2 형태로 전달합니다.", example = "1")
+            @RequestParam List<Long> memberIds
     );
 
     @Operation(

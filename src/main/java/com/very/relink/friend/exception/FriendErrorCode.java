@@ -1,4 +1,4 @@
-package com.very.relink.schedule.exception;
+package com.very.relink.friend.exception;
 
 import com.very.relink.core.exception.DomainException;
 import com.very.relink.core.exception.error.BaseErrorCode;
@@ -6,17 +6,16 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public enum ScheduleErrorCode implements BaseErrorCode<DomainException> {
+public enum FriendErrorCode implements BaseErrorCode<DomainException> {
 
-    INVALID_SCHEDULE_RANGE(HttpStatus.BAD_REQUEST, "Invalid schedule range."),
-    INVALID_SCHEDULE_SLOT_UNIT(HttpStatus.BAD_REQUEST, "Schedule slot must be aligned to 30 minutes."),
-    INVALID_MEMBER_IDS(HttpStatus.BAD_REQUEST, "Member ids must not be empty."),
+    INVALID_PAGE_REQUEST(HttpStatus.BAD_REQUEST, "Invalid friend page request."),
+    INVALID_STATUS_MEMBER_IDS(HttpStatus.BAD_REQUEST, "Status member ids must contain 1 to 10 ids."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Member not found.");
 
     private final HttpStatus httpStatus;
     private final String message;
 
-    ScheduleErrorCode(HttpStatus httpStatus, String message) {
+    FriendErrorCode(HttpStatus httpStatus, String message) {
         this.httpStatus = httpStatus;
         this.message = message;
     }

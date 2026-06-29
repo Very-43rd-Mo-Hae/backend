@@ -9,21 +9,27 @@ import com.very.relink.schedule.adapter.out.persistence.WeeklyScheduleJpaReposit
 import com.very.relink.schedule.application.command.UpdateScheduleSlotsCommand;
 import com.very.relink.schedule.application.command.UpdateScheduleSlotsCommand.ScheduleSlotUpdateCommand;
 import com.very.relink.schedule.application.response.ScheduleResponses.DailyScheduleResponse;
+import com.very.relink.schedule.application.response.ScheduleResponses.MemberScheduleStatusResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.ScheduleSlotChangeResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.ScheduleSlotResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.UpdateScheduleSlotsResponse;
+import com.very.relink.schedule.application.response.ScheduleResponses.UpcomingScheduleSlotResponse;
+import com.very.relink.schedule.application.response.ScheduleResponses.UpcomingScheduleStatusResponse;
 import com.very.relink.schedule.application.response.ScheduleResponses.WeeklyScheduleResponse;
 import com.very.relink.schedule.domain.ScheduleSlotStatus;
 import com.very.relink.schedule.exception.ScheduleErrorCode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +41,8 @@ public class ScheduleService {
     private static final int SLOT_MINUTES = 30;
     private static final int SLOTS_PER_DAY = 48;
     private static final int MINUTES_PER_DAY = 24 * 60;
+    private static final int UPCOMING_STATUS_HOURS = 4;
+    private static final int UPCOMING_STATUS_SLOT_COUNT = UPCOMING_STATUS_HOURS * 60 / SLOT_MINUTES;
 
     private final MemberJpaRepository memberJpaRepository;
     private final WeeklyScheduleJpaRepository weeklyScheduleJpaRepository;
@@ -56,6 +64,33 @@ public class ScheduleService {
         }
 
         return new WeeklyScheduleResponse(weekStartDate, weekStartDate.plusDays(6), days);
+    }
+
+    @Transactional(readOnly = true)
+    public UpcomingScheduleStatusResponse getUpcomingStatuses(List<Long> memberIds) {
+        List<Long> requestedMemberIds = normalizeMemberIds(memberIds);
+        validateMembersExist(requestedMemberIds);
+
+        LocalDateTime from = toCurrentSlotStart(LocalDateTime.now());
+        LocalDateTime to = from.plusHours(UPCOMING_STATUS_HOURS);
+        Map<MemberSlotKey, ScheduleSlotJpaEntity> savedSlots = toMemberSlotMap(
+                scheduleSlotJpaRepository.findAllByMemberIdsAndScheduleDateBetween(
+                        requestedMemberIds,
+                        from.toLocalDate(),
+                        to.toLocalDate()
+                )
+        );
+
+        return new UpcomingScheduleStatusResponse(
+                from,
+                to,
+                requestedMemberIds.stream()
+                        .map(memberId -> new MemberScheduleStatusResponse(
+                                memberId,
+                                buildUpcomingSlots(memberId, from, savedSlots)
+                        ))
+                        .toList()
+        );
     }
 
     @Transactional
@@ -185,6 +220,76 @@ public class ScheduleService {
         return slotMap;
     }
 
+    private List<Long> normalizeMemberIds(List<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            throw ScheduleErrorCode.INVALID_MEMBER_IDS.toException();
+        }
+
+        Set<Long> uniqueMemberIds = new LinkedHashSet<>();
+        for (Long memberId : memberIds) {
+            if (memberId == null) {
+                throw ScheduleErrorCode.INVALID_MEMBER_IDS.toException();
+            }
+            uniqueMemberIds.add(memberId);
+        }
+        return new ArrayList<>(uniqueMemberIds);
+    }
+
+    private void validateMembersExist(List<Long> memberIds) {
+        if (memberJpaRepository.findAllById(memberIds).size() != memberIds.size()) {
+            throw ScheduleErrorCode.MEMBER_NOT_FOUND.toException();
+        }
+    }
+
+    private LocalDateTime toCurrentSlotStart(LocalDateTime dateTime) {
+        int slotMinute = dateTime.getMinute() < SLOT_MINUTES ? 0 : SLOT_MINUTES;
+        return dateTime.withMinute(slotMinute).withSecond(0).withNano(0);
+    }
+
+    private List<UpcomingScheduleSlotResponse> buildUpcomingSlots(
+            Long memberId,
+            LocalDateTime from,
+            Map<MemberSlotKey, ScheduleSlotJpaEntity> savedSlots
+    ) {
+        List<UpcomingScheduleSlotResponse> slots = new ArrayList<>();
+        for (int slotIndex = 0; slotIndex < UPCOMING_STATUS_SLOT_COUNT; slotIndex++) {
+            LocalDateTime slotStart = from.plusMinutes((long) slotIndex * SLOT_MINUTES);
+            LocalTime startTime = slotStart.toLocalTime();
+            LocalTime endTime = startTime.plusMinutes(SLOT_MINUTES);
+            ScheduleSlotJpaEntity savedSlot = savedSlots.get(new MemberSlotKey(
+                    memberId,
+                    slotStart.toLocalDate(),
+                    startTime,
+                    endTime
+            ));
+
+            slots.add(new UpcomingScheduleSlotResponse(
+                    slotStart.toLocalDate(),
+                    startTime,
+                    endTime,
+                    savedSlot == null ? ScheduleSlotStatus.AVAILABLE : savedSlot.getStatus(),
+                    savedSlot == null || savedSlot.getAppointment() == null ? null : savedSlot.getAppointment().getId()
+            ));
+        }
+        return slots;
+    }
+
+    private Map<MemberSlotKey, ScheduleSlotJpaEntity> toMemberSlotMap(List<ScheduleSlotJpaEntity> slots) {
+        Map<MemberSlotKey, ScheduleSlotJpaEntity> slotMap = new HashMap<>();
+        for (ScheduleSlotJpaEntity slot : slots) {
+            slotMap.put(
+                    new MemberSlotKey(
+                            slot.getWeeklySchedule().getMember().getId(),
+                            slot.getScheduleDate(),
+                            slot.getStartTime(),
+                            slot.getEndTime()
+                    ),
+                    slot
+            );
+        }
+        return slotMap;
+    }
+
     private List<ExpandedSlot> expand(ScheduleSlotUpdateCommand command) {
         if (command.scheduleDate() == null || command.startTime() == null
                 || command.endTime() == null || command.status() == null) {
@@ -241,6 +346,14 @@ public class ScheduleService {
     }
 
     private record SlotKey(
+            LocalDate scheduleDate,
+            LocalTime startTime,
+            LocalTime endTime
+    ) {
+    }
+
+    private record MemberSlotKey(
+            Long memberId,
             LocalDate scheduleDate,
             LocalTime startTime,
             LocalTime endTime
