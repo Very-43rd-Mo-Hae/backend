@@ -36,7 +36,7 @@ BEGIN
             updated_at
         )
         VALUES (
-            CONCAT('mock.friend.', LPAD(friend_no, 3, '0'), '@relink.local'),
+            CONCAT('mock.friend.', LPAD(friend_no, 3, '0'), '@mohae.local'),
             CONCAT('Mock Friend ', LPAD(friend_no, 3, '0')),
             CONCAT('https://api.dicebear.com/8.x/initials/svg?seed=Mock%20Friend%20', LPAD(friend_no, 3, '0')),
             CONCAT('mock-friend-', LPAD(friend_no, 3, '0')),

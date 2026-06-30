@@ -40,7 +40,7 @@ public class SwaggerConfiguration {
                 .in(SecurityScheme.In.HEADER).name("Authorization");
         SecurityRequirement securityRequirement = new SecurityRequirement().addList("bearerAuth");
 
-        Server mainServer = new Server().url(serverUrl).description("Re-Link API Server");
+        Server mainServer = new Server().url(serverUrl).description("모해 API Server");
 
         return new OpenAPI()
                 .components(new Components().addSecuritySchemes("bearerAuth", securityScheme))

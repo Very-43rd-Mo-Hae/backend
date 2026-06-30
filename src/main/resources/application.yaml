@@ -1,6 +1,6 @@
 spring:
   application:
-    name: relink
+    name: mohae
   config:
     import: optional:classpath:./secret/.env[.properties]
 
@@ -38,7 +38,7 @@ spring:
 batch:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${BATCH_DB_URL:jdbc:mysql://localhost:3306/${BATCH_SCHEMA:mohae_batch}?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    url: ${BATCH_DB_URL:jdbc:mysql://localhost:3306/${BATCH_SCHEMA:mohae_backend_batch}?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
     username: ${BATCH_DB_USER_NAME:${DB_USER_NAME:root}}
     password: ${BATCH_DB_PASSWORD:${DB_PASSWORD:1234}}
 
@@ -55,7 +55,7 @@ springdoc:
     enabled: true
 
 jwt:
-  secret: ${JWT_SECRET:relink-local-development-secret-key-should-be-changed}
+  secret: ${JWT_SECRET:mohae-local-development-secret-key-should-be-changed}
   access-token-expiration-seconds: 9000
   refresh-token-expiration-seconds: 1209600
 
@@ -118,4 +118,4 @@ chat:
 database:
   schema:
     app: ${DB_SCHEMA:mohae}
-    batch: ${BATCH_SCHEMA:mohae_batch}
+    batch: ${BATCH_SCHEMA:mohae_backend_batch}

@@ -1,6 +1,6 @@
-# Re-Link 백엔드
+﻿# 모해 백엔드
 
-Re-Link 백엔드 서비스입니다.
+모해 백엔드 서비스입니다.
 
 ## 문서
 
@@ -14,7 +14,7 @@ sequenceDiagram
     actor User as 사용자
     participant App as 프론트 앱
     participant Provider as 소셜 Provider SDK
-    participant API as Re-Link 백엔드
+    participant API as 모해 백엔드
     participant Resolver as SocialUserResolver
     participant Member as 회원 저장소
     participant JWT as TokenIssuePort
@@ -64,7 +64,7 @@ NOTIFICATION_OUTBOX_ENABLED=true
 NOTIFICATION_OUTBOX_BATCH_SIZE=50
 NOTIFICATION_OUTBOX_FIXED_DELAY_MILLIS=5000
 DB_SCHEMA=mohae
-BATCH_SCHEMA=mohae_batch
+BATCH_SCHEMA=mohae_backend_batch
 SPRING_SQL_INIT_MODE=always
 BATCH_DB_URL=jdbc:mysql://localhost:3306/${BATCH_SCHEMA}?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
 BATCH_DB_USER_NAME=root
@@ -111,8 +111,8 @@ self.addEventListener("notificationclick", (event) => {
 - `notification` stores requested notification messages.
 - `notification_outbox` stores pending Web Push jobs for the scheduler.
 - `notification_delivery` stores per-target send results.
-- Spring Batch metadata tables use the `mohae_batch` schema by default.
-- `batch.datasource.*` connects to `mohae_batch` and initializes Batch metadata tables from `db/batch-schema-mysql.sql`.
+- Spring Batch metadata tables use the `mohae_backend_batch` schema by default.
+- `batch.datasource.*` connects to `mohae_backend_batch` and initializes Batch metadata tables from `db/batch-schema-mysql.sql`.
 - `batch.datasource.*` is used only for Spring Batch metadata.
-- Check Batch metadata with `show tables from mohae_batch like 'BATCH_%';`.
+- Check Batch metadata with `show tables from mohae_backend_batch like 'BATCH_%';`.
 - When Redis deduplication fails, sending continues and only a warning is logged.

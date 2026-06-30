@@ -9,7 +9,8 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  DEPLOY_DIR: ${{ secrets.EC2_DEPLOY_DIR || '/opt/relink/backend' }}
+  DEPLOY_DIR: ${{ secrets.EC2_DEPLOY_DIR || '/opt/mohae/backend' }}
+  PROD_ENV_PATH: src/main/resources/secret/prod.env
 
 jobs:
   deploy:
@@ -22,6 +23,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
 
       - name: Set image tag
         run: echo "IMAGE_TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
@@ -39,6 +43,9 @@ jobs:
       - name: Set ECR registry
         run: echo "ECR_REGISTRY=${{ steps.ecr-login.outputs.registry }}" >> "$GITHUB_ENV"
 
+      - name: Validate production env file
+        run: test -f "${PROD_ENV_PATH}"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -52,22 +59,23 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/relink-ec2
-          chmod 600 ~/.ssh/relink-ec2
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/mohae-ec2
+          chmod 600 ~/.ssh/mohae-ec2
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Upload compose file
         run: |
-          ssh -i ~/.ssh/relink-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "mkdir -p '${DEPLOY_DIR}'"
-          scp -i ~/.ssh/relink-ec2 deploy/docker-compose.prod.yml "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${DEPLOY_DIR}/docker-compose.yml"
+          ssh -i ~/.ssh/mohae-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "mkdir -p '${DEPLOY_DIR}'"
+          scp -i ~/.ssh/mohae-ec2 deploy/docker-compose.prod.yml "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${DEPLOY_DIR}/docker-compose.yml"
+          scp -i ~/.ssh/mohae-ec2 "${PROD_ENV_PATH}" "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${DEPLOY_DIR}/.env"
 
       - name: Deploy on EC2
         run: |
           ECR_PASSWORD="$(aws ecr get-login-password --region "${AWS_REGION}")"
-          printf '%s' "${ECR_PASSWORD}" | ssh -i ~/.ssh/relink-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+          printf '%s' "${ECR_PASSWORD}" | ssh -i ~/.ssh/mohae-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
             "docker login --username AWS --password-stdin '${ECR_REGISTRY}'"
 
-          ssh -i ~/.ssh/relink-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << EOF
+          ssh -i ~/.ssh/mohae-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << EOF
           set -euo pipefail
           cd '${DEPLOY_DIR}'
           test -f .env
@@ -75,9 +83,12 @@ jobs:
           ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml up -d
           docker image prune -f
 
+          APP_PORT="\$(grep -E '^APP_PORT=' .env | tail -n 1 | cut -d= -f2- || true)"
+          APP_PORT="\${APP_PORT:-8080}"
+
           for attempt in \$(seq 1 30); do
-            if curl -fsS http://127.0.0.1:\${APP_PORT:-8080}/actuator/health > /tmp/relink-health.json; then
-              cat /tmp/relink-health.json
+            if curl -fsS "http://127.0.0.1:\${APP_PORT}/actuator/health" > /tmp/mohae-health.json; then
+              cat /tmp/mohae-health.json
               exit 0
             fi
             sleep 3

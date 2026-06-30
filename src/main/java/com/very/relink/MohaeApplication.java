@@ -11,10 +11,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @ConfigurationPropertiesScan
 @EnableJpaAuditing
 @EnableScheduling
-public class RelinkApplication {
+public class MohaeApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(RelinkApplication.class, args);
+        SpringApplication.run(MohaeApplication.class, args);
     }
 
 }

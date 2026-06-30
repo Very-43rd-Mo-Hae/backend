@@ -6,6 +6,6 @@ build
 out
 *.iml
 *.log
-src/main/resources/secret/.env
+src/main/resources/secret/*.env
 src/main/resources/application-dev.yaml
 src/main/resources/application-prod.yaml

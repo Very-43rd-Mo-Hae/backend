@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.very'
 version = '0.0.1-SNAPSHOT'
-description = 'relink'
+description = 'mohae'
 
 java {
     toolchain {

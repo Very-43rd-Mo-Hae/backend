@@ -13,13 +13,13 @@ FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-RUN groupadd --system relink && useradd --system --gid relink --home-dir /app relink
+RUN groupadd --system mohae && useradd --system --gid mohae --home-dir /app mohae
 
 COPY --from=build /workspace/build/libs/*.jar /app/app.jar
 
-RUN chown -R relink:relink /app
+RUN chown -R mohae:mohae /app
 
-USER relink
+USER mohae
 
 EXPOSE 8080
 
