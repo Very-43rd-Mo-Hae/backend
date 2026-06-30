@@ -10,6 +10,8 @@ import com.very.relink.appointment.application.response.AppointmentResponses.App
 import com.very.relink.appointment.application.response.AppointmentResponses.AppointmentResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendListResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendResponse;
+import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarListResponse;
+import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarResponse;
 import com.very.relink.appointment.domain.AppointmentParticipantStatus;
 import com.very.relink.appointment.exception.AppointmentErrorCode;
 import com.very.relink.friend.adapter.out.persistence.FriendshipJpaRepository;
@@ -87,6 +89,42 @@ public class AppointmentService {
                 .toList();
 
         return new AvailableFriendListResponse(startAt, endAt, availableFriends);
+    }
+
+    @Transactional(readOnly = true)
+    public FriendCalendarListResponse getFriendCalendars(Long ownerId, List<Long> memberIds, LocalDate date) {
+        validateMemberExists(ownerId);
+        if (memberIds == null || memberIds.isEmpty()) {
+            throw AppointmentErrorCode.INVALID_PARTICIPANTS.toException();
+        }
+
+        Set<Long> uniqueMemberIds = new LinkedHashSet<>();
+        for (Long memberId : memberIds) {
+            if (memberId == null || memberId.equals(ownerId)
+                    || !friendshipJpaRepository.existsAcceptedFriendship(ownerId, memberId)) {
+                throw AppointmentErrorCode.FRIEND_NOT_FOUND.toException();
+            }
+            uniqueMemberIds.add(memberId);
+        }
+
+        Map<Long, MemberJpaEntity> membersById = new LinkedHashMap<>();
+        memberJpaRepository.findAllById(uniqueMemberIds)
+                .forEach(member -> membersById.put(member.getId(), member));
+        if (membersById.size() != uniqueMemberIds.size()) {
+            throw AppointmentErrorCode.MEMBER_NOT_FOUND.toException();
+        }
+
+        List<FriendCalendarResponse> friends = uniqueMemberIds.stream()
+                .map(membersById::get)
+                .map(member -> new FriendCalendarResponse(
+                        member.getId(),
+                        member.getName(),
+                        member.getImageUrl(),
+                        scheduleService.getWeeklySchedule(member.getId(), date)
+                ))
+                .toList();
+
+        return new FriendCalendarListResponse(friends);
     }
 
     @Transactional

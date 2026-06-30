@@ -2,6 +2,7 @@ package com.very.relink.appointment.presentation.controller;
 
 import com.very.relink.appointment.application.response.AppointmentResponses.AppointmentResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendListResponse;
+import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarListResponse;
 import com.very.relink.appointment.application.service.AppointmentService;
 import com.very.relink.core.presentation.RestResponse;
 import com.very.relink.notification.application.port.in.CurrentUserProvider;
@@ -37,6 +38,17 @@ public class AppointmentController {
         Long memberId = currentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(new RestResponse<>(
                 appointmentService.getAvailableFriends(memberId, startAt, endAt)
+        ));
+    }
+
+    @GetMapping("/friend-calendars")
+    public ResponseEntity<RestResponse<FriendCalendarListResponse>> getFriendCalendars(
+            @RequestParam List<Long> memberIds,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate date
+    ) {
+        Long memberId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(new RestResponse<>(
+                appointmentService.getFriendCalendars(memberId, memberIds, date)
         ));
     }
 

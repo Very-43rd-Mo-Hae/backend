@@ -40,4 +40,17 @@ public final class AppointmentResponses {
             WeeklyScheduleResponse calendar
     ) {
     }
+
+    public record FriendCalendarListResponse(
+            List<FriendCalendarResponse> friends
+    ) {
+    }
+
+    public record FriendCalendarResponse(
+            Long memberId,
+            String name,
+            String imageUrl,
+            WeeklyScheduleResponse calendar
+    ) {
+    }
 }
