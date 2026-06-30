@@ -1,0 +1,75 @@
+services:
+  app:
+    image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+    container_name: relink-backend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/${DB_SCHEMA:-mohae}?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+      DB_USER_NAME: ${DB_USER_NAME:-relink}
+      DB_PASSWORD: ${DB_PASSWORD}
+      BATCH_DB_URL: ${BATCH_DB_URL:-jdbc:mysql://mysql:3306/${BATCH_SCHEMA:-mohae_batch}?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+      BATCH_DB_USER_NAME: ${BATCH_DB_USER_NAME:-relink}
+      BATCH_DB_PASSWORD: ${BATCH_DB_PASSWORD:-${DB_PASSWORD}}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_SQL_INIT_MODE: ${SPRING_SQL_INIT_MODE:-always}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      CHAT_LOCAL_STORAGE_ROOT: /app/storage/chat
+      CHAT_LOCAL_PUBLIC_BASE_URL: ${CHAT_LOCAL_PUBLIC_BASE_URL:-http://localhost:8080/uploads}
+    volumes:
+      - relink_chat_storage:/app/storage/chat
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    container_name: relink-mysql
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_SCHEMA:-mohae}
+      MYSQL_USER: ${DB_USER_NAME:-relink}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+09:00
+    volumes:
+      - relink_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: relink-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PUBLIC_PORT:-6379}:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - relink_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  relink_chat_storage:
+  relink_mysql_data:
+  relink_redis_data:

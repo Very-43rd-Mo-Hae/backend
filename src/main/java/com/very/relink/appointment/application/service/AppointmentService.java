@@ -79,7 +79,12 @@ public class AppointmentService {
         );
 
         List<AvailableFriendResponse> availableFriends = friends.stream()
-                .filter(friend -> isAvailable(friend.getId(), slotMap.getOrDefault(friend.getId(), List.of())))
+                .filter(friend -> hasAnyAvailableSlot(
+                        friend.getId(),
+                        slotMap.getOrDefault(friend.getId(), List.of()),
+                        startAt,
+                        endAt
+                ))
                 .map(friend -> new AvailableFriendResponse(
                         friend.getId(),
                         friend.getName(),
@@ -211,17 +216,62 @@ public class AppointmentService {
         );
 
         for (MemberJpaEntity participant : participants) {
-            if (!isAvailable(participant.getId(), slotMap.getOrDefault(participant.getId(), List.of()))) {
+            if (!isEntireRangeAvailable(participant.getId(), slotMap.getOrDefault(participant.getId(), List.of()), startAt, endAt)) {
                 throw AppointmentErrorCode.PARTICIPANT_UNAVAILABLE.toException();
             }
         }
     }
 
-    private boolean isAvailable(Long memberId, List<ScheduleSlotJpaEntity> savedSlots) {
-        return savedSlots.stream()
-                .filter(slot -> slot.getWeeklySchedule().getMember().getId().equals(memberId))
-                .noneMatch(slot -> slot.getStatus() == ScheduleSlotStatus.UNAVAILABLE
-                        || slot.getStatus() == ScheduleSlotStatus.APPOINTMENT);
+    private boolean hasAnyAvailableSlot(
+            Long memberId,
+            List<ScheduleSlotJpaEntity> savedSlots,
+            LocalDateTime startAt,
+            LocalDateTime endAt
+    ) {
+        Set<LocalTime> blockedStarts = toBlockedSlotStarts(memberId, savedSlots);
+        int startMinute = toMinuteOfDay(startAt.toLocalTime());
+        int endMinute = toScheduleRangeEndMinute(startAt, endAt);
+
+        for (int minute = startMinute; minute < endMinute; minute += SLOT_MINUTES) {
+            LocalTime slotStart = LocalTime.MIDNIGHT.plusMinutes(minute);
+            if (!blockedStarts.contains(slotStart)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isEntireRangeAvailable(
+            Long memberId,
+            List<ScheduleSlotJpaEntity> savedSlots,
+            LocalDateTime startAt,
+            LocalDateTime endAt
+    ) {
+        Set<LocalTime> blockedStarts = toBlockedSlotStarts(memberId, savedSlots);
+        int startMinute = toMinuteOfDay(startAt.toLocalTime());
+        int endMinute = toScheduleRangeEndMinute(startAt, endAt);
+
+        for (int minute = startMinute; minute < endMinute; minute += SLOT_MINUTES) {
+            LocalTime slotStart = LocalTime.MIDNIGHT.plusMinutes(minute);
+            if (blockedStarts.contains(slotStart)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Set<LocalTime> toBlockedSlotStarts(Long memberId, List<ScheduleSlotJpaEntity> savedSlots) {
+        Set<LocalTime> blockedStarts = new LinkedHashSet<>();
+        for (ScheduleSlotJpaEntity slot : savedSlots) {
+            if (!slot.getWeeklySchedule().getMember().getId().equals(memberId)) {
+                continue;
+            }
+            if (slot.getStatus() == ScheduleSlotStatus.UNAVAILABLE
+                    || slot.getStatus() == ScheduleSlotStatus.APPOINTMENT) {
+                blockedStarts.add(slot.getStartTime());
+            }
+        }
+        return blockedStarts;
     }
 
     private void blockParticipantSchedules(AppointmentJpaEntity appointment, List<MemberJpaEntity> participants) {

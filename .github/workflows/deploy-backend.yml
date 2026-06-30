@@ -1,0 +1,88 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  DEPLOY_DIR: ${{ secrets.EC2_DEPLOY_DIR || '/opt/relink/backend' }}
+
+jobs:
+  deploy:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set ECR registry
+        run: echo "ECR_REGISTRY=${{ steps.ecr-login.outputs.registry }}" >> "$GITHUB_ENV"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/relink-ec2
+          chmod 600 ~/.ssh/relink-ec2
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload compose file
+        run: |
+          ssh -i ~/.ssh/relink-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "mkdir -p '${DEPLOY_DIR}'"
+          scp -i ~/.ssh/relink-ec2 deploy/docker-compose.prod.yml "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${DEPLOY_DIR}/docker-compose.yml"
+
+      - name: Deploy on EC2
+        run: |
+          ECR_PASSWORD="$(aws ecr get-login-password --region "${AWS_REGION}")"
+          printf '%s' "${ECR_PASSWORD}" | ssh -i ~/.ssh/relink-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+            "docker login --username AWS --password-stdin '${ECR_REGISTRY}'"
+
+          ssh -i ~/.ssh/relink-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << EOF
+          set -euo pipefail
+          cd '${DEPLOY_DIR}'
+          test -f .env
+          ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml pull app
+          ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml up -d
+          docker image prune -f
+
+          for attempt in \$(seq 1 30); do
+            if curl -fsS http://127.0.0.1:\${APP_PORT:-8080}/actuator/health > /tmp/relink-health.json; then
+              cat /tmp/relink-health.json
+              exit 0
+            fi
+            sleep 3
+          done
+
+          docker compose --env-file .env -f docker-compose.yml logs --tail 120 app
+          exit 1
+          EOF
