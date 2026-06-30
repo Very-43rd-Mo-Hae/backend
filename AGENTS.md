@@ -15,6 +15,7 @@ Always follow these priorities:
 2. Make the smallest safe change that solves the user's request.
 3. Prefer readable, maintainable code over clever code.
 4. Verify changes with tests, builds, type checks, or focused manual reasoning.
+   - Current project override: do not run verification commands unless the user explicitly asks for verification.
 5. If a requirement is ambiguous, state the assumption you made instead of expanding the scope.
 6. Be extra conservative with security, authentication, authorization, database schema, and external integrations.
 7. Do not modify generated files, build artifacts, lockfiles, or migrations unless clearly required.
