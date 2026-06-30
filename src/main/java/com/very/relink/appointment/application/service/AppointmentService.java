@@ -64,7 +64,7 @@ public class AppointmentService {
 
         LocalDate scheduleDate = startAt.toLocalDate();
         LocalTime startTime = startAt.toLocalTime();
-        LocalTime endTime = endAt.toLocalTime();
+        LocalTime endTime = toScheduleRangeEndTime(startAt, endAt);
         List<MemberJpaEntity> friends = friendshipJpaRepository.findAcceptedFriendMembers(ownerId);
         List<Long> friendIds = friends.stream().map(MemberJpaEntity::getId).toList();
         Map<Long, List<ScheduleSlotJpaEntity>> slotMap = toMemberSlots(
@@ -206,7 +206,7 @@ public class AppointmentService {
                         memberIds,
                         startAt.toLocalDate(),
                         startAt.toLocalTime(),
-                        endAt.toLocalTime()
+                        toScheduleRangeEndTime(startAt, endAt)
                 )
         );
 
@@ -226,13 +226,14 @@ public class AppointmentService {
 
     private void blockParticipantSchedules(AppointmentJpaEntity appointment, List<MemberJpaEntity> participants) {
         LocalDate date = appointment.getStartAt().toLocalDate();
-        LocalTime startTime = appointment.getStartAt().toLocalTime();
-        LocalTime endTime = appointment.getEndAt().toLocalTime();
+        int startMinute = toMinuteOfDay(appointment.getStartAt().toLocalTime());
+        int endMinute = toScheduleRangeEndMinute(appointment.getStartAt(), appointment.getEndAt());
 
         for (MemberJpaEntity participant : participants) {
             WeeklyScheduleJpaEntity weeklySchedule = getOrCreateWeeklySchedule(participant, date);
-            for (LocalTime slotStart = startTime; slotStart.isBefore(endTime); slotStart = slotStart.plusMinutes(SLOT_MINUTES)) {
-                LocalTime slotEnd = slotStart.plusMinutes(SLOT_MINUTES);
+            for (int minute = startMinute; minute < endMinute; minute += SLOT_MINUTES) {
+                LocalTime slotStart = LocalTime.MIDNIGHT.plusMinutes(minute);
+                LocalTime slotEnd = LocalTime.MIDNIGHT.plusMinutes((long) minute + SLOT_MINUTES);
                 LocalTime currentSlotStart = slotStart;
                 LocalTime currentSlotEnd = slotEnd;
                 scheduleSlotJpaRepository
@@ -338,7 +339,7 @@ public class AppointmentService {
 
     private void validateAppointmentTime(LocalDateTime startAt, LocalDateTime endAt) {
         if (startAt == null || endAt == null
-                || !startAt.toLocalDate().equals(endAt.toLocalDate())
+                || !isSameDayRange(startAt, endAt)
                 || !startAt.isBefore(endAt)
                 || Duration.between(startAt, endAt).toMinutes() % SLOT_MINUTES != 0
                 || !isAligned(startAt)
@@ -351,5 +352,33 @@ public class AppointmentService {
         return dateTime.getMinute() % SLOT_MINUTES == 0
                 && dateTime.getSecond() == 0
                 && dateTime.getNano() == 0;
+    }
+
+    private boolean isSameDayRange(LocalDateTime startAt, LocalDateTime endAt) {
+        return startAt.toLocalDate().equals(endAt.toLocalDate())
+                || isEndAtNextDayMidnight(startAt, endAt);
+    }
+
+    private boolean isEndAtNextDayMidnight(LocalDateTime startAt, LocalDateTime endAt) {
+        return endAt.toLocalDate().equals(startAt.toLocalDate().plusDays(1))
+                && endAt.toLocalTime().equals(LocalTime.MIDNIGHT);
+    }
+
+    private LocalTime toScheduleRangeEndTime(LocalDateTime startAt, LocalDateTime endAt) {
+        if (isEndAtNextDayMidnight(startAt, endAt)) {
+            return LocalTime.MAX;
+        }
+        return endAt.toLocalTime();
+    }
+
+    private int toScheduleRangeEndMinute(LocalDateTime startAt, LocalDateTime endAt) {
+        if (isEndAtNextDayMidnight(startAt, endAt)) {
+            return 24 * 60;
+        }
+        return toMinuteOfDay(endAt.toLocalTime());
+    }
+
+    private int toMinuteOfDay(LocalTime time) {
+        return time.getHour() * 60 + time.getMinute();
     }
 }
