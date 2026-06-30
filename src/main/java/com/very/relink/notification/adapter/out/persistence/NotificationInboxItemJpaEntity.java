@@ -71,4 +71,15 @@ public class NotificationInboxItemJpaEntity extends BaseEntity {
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
+
+    public void markRead() {
+        if (status == NotificationInboxStatus.UNREAD) {
+            status = NotificationInboxStatus.READ;
+            readAt = LocalDateTime.now();
+        }
+    }
+
+    public void delete() {
+        status = NotificationInboxStatus.DELETED;
+    }
 }

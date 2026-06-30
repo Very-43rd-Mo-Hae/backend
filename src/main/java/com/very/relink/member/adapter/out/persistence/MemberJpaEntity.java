@@ -2,6 +2,7 @@ package com.very.relink.member.adapter.out.persistence;
 
 import com.very.relink.auth.domain.value.OAuth2Provider;
 import com.very.relink.core.domain.BaseEntity;
+import com.very.relink.member.domain.MemberStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,8 +10,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -44,6 +47,9 @@ public class MemberJpaEntity extends BaseEntity {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "bio")
+    private String bio;
+
     @Column(name = "image_url")
     private String imageUrl;
 
@@ -53,4 +59,18 @@ public class MemberJpaEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "provider")
     private OAuth2Provider provider;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 30)
+    private MemberStatus status;
+
+    @Column(name = "withdrawn_at")
+    private LocalDateTime withdrawnAt;
+
+    @PrePersist
+    private void prePersist() {
+        if (status == null) {
+            status = MemberStatus.ACTIVE;
+        }
+    }
 }

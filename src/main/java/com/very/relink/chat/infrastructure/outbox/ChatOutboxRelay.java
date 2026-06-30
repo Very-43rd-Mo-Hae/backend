@@ -3,6 +3,7 @@ package com.very.relink.chat.infrastructure.outbox;
 import com.very.relink.chat.application.port.ChatPorts.ChatMessagePublisher;
 import com.very.relink.chat.application.response.ChatResponses.ChatMessageCreatedPayload;
 import com.very.relink.chat.application.response.ChatResponses.ChatRoomReadPayload;
+import com.very.relink.chat.application.service.ChatMessageNotificationService;
 import com.very.relink.chat.domain.ChatEnums.OutboxStatus;
 import com.very.relink.chat.infrastructure.config.ChatProperties;
 import com.very.relink.chat.infrastructure.persistence.jpa.ChatOutboxEventJpaEntity;
@@ -26,6 +27,7 @@ public class ChatOutboxRelay {
 
     private final ChatOutboxEventJpaRepository chatOutboxEventJpaRepository;
     private final ChatMessagePublisher chatMessagePublisher;
+    private final ChatMessageNotificationService chatMessageNotificationService;
     private final ChatProperties chatProperties;
     private final ObjectMapper objectMapper;
 
@@ -46,7 +48,11 @@ public class ChatOutboxRelay {
     private void publishEvent(ChatOutboxEventJpaEntity event) {
         try {
             switch (event.getEventType()) {
-                case CHAT_MESSAGE_CREATED -> chatMessagePublisher.publishMessageCreated(readPayload(event, ChatMessageCreatedPayload.class));
+                case CHAT_MESSAGE_CREATED -> {
+                    ChatMessageCreatedPayload payload = readPayload(event, ChatMessageCreatedPayload.class);
+                    chatMessagePublisher.publishMessageCreated(payload);
+                    chatMessageNotificationService.notifyMessageCreated(payload);
+                }
                 case CHAT_ROOM_READ -> chatMessagePublisher.publishRoomRead(readPayload(event, ChatRoomReadPayload.class));
             }
             event.markPublished(LocalDateTime.now());

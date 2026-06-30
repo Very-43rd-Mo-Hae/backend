@@ -6,6 +6,7 @@ import com.very.relink.friend.application.response.FriendResponses.FriendListRes
 import com.very.relink.friend.application.response.FriendResponses.FriendStatusListResponse;
 import com.very.relink.friend.application.response.FriendResponses.RecommendedFriendListResponse;
 import com.very.relink.friend.exception.FriendErrorCode;
+import com.very.relink.friend.presentation.request.FriendLightningRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Friend", description = "친구 목록과 친구 상태 조회 API")
@@ -34,8 +36,8 @@ public interface FriendSwagger {
             @RequestParam(required = false) String keyword,
             @Parameter(description = "0부터 시작하는 페이지 번호", example = "0")
             @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기. 최대 50명까지 조회할 수 있습니다.", example = "20")
-            @RequestParam(defaultValue = "20") int size
+            @Parameter(description = "페이지 크기. 최대 50명까지 조회할 수 있습니다.", example = "10")
+            @RequestParam(defaultValue = "10") int size
     );
 
     @Operation(
@@ -55,7 +57,7 @@ public interface FriendSwagger {
 
     @Operation(
             summary = "친구 상태 링 조회",
-            description = "최대 10명의 친구에 대해 현재 시각부터 4시간 동안의 일정 상태와 번개 활성 여부를 조회합니다. 이 API가 호출되면 현재 로그인한 회원의 번개 활성 상태가 Redis에 TTL과 함께 갱신됩니다."
+            description = "최대 10명의 친구에 대해 현재 시각부터 4시간 동안의 일정 상태와 번개 활성 여부를 조회합니다."
     )
     @ApiResponse(
             responseCode = "200",
@@ -66,5 +68,18 @@ public interface FriendSwagger {
     ResponseEntity<RestResponse<FriendStatusListResponse>> getFriendStatuses(
             @Parameter(description = "상태를 조회할 친구 memberId 목록. 최대 10개까지 허용합니다.", example = "1")
             @RequestParam List<Long> memberIds
+    );
+
+    @Operation(
+            summary = "번개 상태 설정",
+            description = "현재 로그인한 회원을 요청한 종료 시각까지 번개 가능 상태로 설정합니다. Redis TTL은 expiresAt까지 남은 시간으로 저장됩니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "번개 상태 설정 성공"
+    )
+    @ApiErrorCode({FriendErrorCode.class})
+    ResponseEntity<RestResponse<Void>> activateLightning(
+            @RequestBody FriendLightningRequest request
     );
 }

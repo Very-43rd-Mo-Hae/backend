@@ -1,6 +1,7 @@
 package com.very.relink.friend.adapter.out.redis;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
@@ -14,12 +15,12 @@ import org.springframework.stereotype.Component;
 public class FriendLightningRedisAdapter {
 
     private static final String LIGHTNING_KEY_PREFIX = "friend:lightning:";
-    private static final Duration LIGHTNING_TTL = Duration.ofMinutes(3);
 
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public void refreshActive(Long memberId) {
-        redisTemplate.opsForValue().set(toKey(memberId), true, LIGHTNING_TTL);
+    public void activateUntil(Long memberId, Instant expiresAt) {
+        Duration ttl = Duration.between(Instant.now(), expiresAt);
+        redisTemplate.opsForValue().set(toKey(memberId), true, ttl);
     }
 
     public Map<Long, Boolean> getActiveMap(Collection<Long> memberIds) {

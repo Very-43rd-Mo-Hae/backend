@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/chat")
+@RequestMapping("/api/v1/chat")
 public class ChatController implements ChatSwagger {
 
     private final CurrentUserProvider currentUserProvider;

@@ -40,4 +40,7 @@ public final class ChatCommands {
 
     public record IssueChatAttachmentPresignedUrlCommand(Long requesterId, Long roomId, String fileName, String contentType, Long fileSize) {
     }
+
+    public record IssueProfileImagePresignedUrlCommand(Long requesterId, String fileName, String contentType, Long fileSize) {
+    }
 }

@@ -1,50 +1,55 @@
-package com.very.relink.chat.infrastructure.s3;
+package com.very.relink.chat.infrastructure.local;
 
 import com.very.relink.chat.application.command.ChatCommands.IssueChatAttachmentPresignedUrlCommand;
 import com.very.relink.chat.application.command.ChatCommands.IssueProfileImagePresignedUrlCommand;
 import com.very.relink.chat.application.port.ChatPorts.StoragePresignedUrlPort;
 import com.very.relink.chat.application.port.ChatPorts.StorageUrlResolver;
 import com.very.relink.chat.application.response.ChatResponses.PresignedUploadUrl;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "chat.storage", name = "type", havingValue = "s3")
-public class S3StorageAdapter implements StoragePresignedUrlPort, StorageUrlResolver {
+@ConditionalOnProperty(prefix = "chat.storage", name = "type", havingValue = "local", matchIfMissing = true)
+public class LocalStorageAdapter implements StoragePresignedUrlPort, StorageUrlResolver {
 
-    private final String publicBaseUrl;
-    private final String uploadBaseUrl;
-    private final long expiresIn;
+    private final LocalChatStorageProperties properties;
 
-    public S3StorageAdapter(
-            @Value("${chat.storage.public-base-url:https://storage.example.com}") String publicBaseUrl,
-            @Value("${chat.storage.upload-base-url:https://s3-presigned-put-url.example.com}") String uploadBaseUrl,
-            @Value("${chat.storage.presigned-expires-in:300}") long expiresIn
-    ) {
-        this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
-        this.uploadBaseUrl = trimTrailingSlash(uploadBaseUrl);
-        this.expiresIn = expiresIn;
+    public LocalStorageAdapter(LocalChatStorageProperties properties) {
+        this.properties = properties;
     }
 
     @Override
     public PresignedUploadUrl issueUploadUrl(IssueChatAttachmentPresignedUrlCommand command) {
         String storageKey = createStorageKey(command.roomId(), command.fileName(), command.contentType());
-        return new PresignedUploadUrl(uploadBaseUrl + "/" + storageKey, storageKey, expiresIn);
+        String encodedKey = URLEncoder.encode(storageKey, StandardCharsets.UTF_8);
+
+        return new PresignedUploadUrl(
+                "/api/v1/chat/attachments/local?key=" + encodedKey,
+                storageKey,
+                properties.uploadExpiresIn()
+        );
     }
 
     @Override
     public PresignedUploadUrl issueProfileImageUploadUrl(IssueProfileImagePresignedUrlCommand command) {
         String storageKey = createProfileStorageKey(command.requesterId(), command.fileName(), command.contentType());
-        return new PresignedUploadUrl(uploadBaseUrl + "/" + storageKey, storageKey, expiresIn);
+        String encodedKey = URLEncoder.encode(storageKey, StandardCharsets.UTF_8);
+
+        return new PresignedUploadUrl(
+                "/api/v1/chat/attachments/local?key=" + encodedKey,
+                storageKey,
+                properties.uploadExpiresIn()
+        );
     }
 
     @Override
     public String resolveUrl(String storageKey) {
-        return publicBaseUrl + "/" + storageKey;
+        return trimTrailingSlash(properties.publicBaseUrl()) + "/" + storageKey;
     }
 
     private String createStorageKey(Long roomId, String fileName, String contentType) {

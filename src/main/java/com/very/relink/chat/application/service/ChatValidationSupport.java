@@ -7,7 +7,7 @@ import com.very.relink.chat.infrastructure.persistence.jpa.ChatParticipantJpaRep
 import java.util.List;
 import java.util.Set;
 
-final class ChatValidationSupport {
+public final class ChatValidationSupport {
 
     static final long MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024L;
     private static final Set<String> IMAGE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
@@ -40,7 +40,7 @@ final class ChatValidationSupport {
         }
     }
 
-    static void validateImageFile(String contentType, Long fileSize) {
+    public static void validateImageFile(String contentType, Long fileSize) {
         if (!IMAGE_CONTENT_TYPES.contains(contentType)) {
             throw ChatErrorCode.UNSUPPORTED_ATTACHMENT_CONTENT_TYPE.toException();
         }

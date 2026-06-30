@@ -15,6 +15,8 @@ import com.very.relink.member.adapter.out.persistence.MemberJpaEntity;
 import com.very.relink.member.adapter.out.persistence.MemberJpaRepository;
 import com.very.relink.schedule.application.response.ScheduleResponses.UpcomingScheduleStatusResponse;
 import com.very.relink.schedule.application.service.ScheduleService;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -80,8 +82,6 @@ public class FriendService {
 
     @Transactional(readOnly = true)
     public FriendStatusListResponse getFriendStatuses(Long currentMemberId, List<Long> memberIds) {
-        friendLightningRedisAdapter.refreshActive(currentMemberId);
-
         List<Long> requestedMemberIds = normalizeStatusMemberIds(memberIds);
         UpcomingScheduleStatusResponse scheduleStatus = scheduleService.getUpcomingStatuses(requestedMemberIds);
         Map<Long, Boolean> activeMap = friendLightningRedisAdapter.getActiveMap(requestedMemberIds);
@@ -105,6 +105,15 @@ public class FriendService {
                         ))
                         .toList()
         );
+    }
+
+    public void activateLightning(Long memberId, OffsetDateTime expiresAt) {
+        validateMemberExists(memberId);
+        if (expiresAt == null || !expiresAt.toInstant().isAfter(Instant.now())) {
+            throw FriendErrorCode.INVALID_LIGHTNING_EXPIRES_AT.toException();
+        }
+
+        friendLightningRedisAdapter.activateUntil(memberId, expiresAt.toInstant());
     }
 
     private void validateMemberExists(Long memberId) {

@@ -34,4 +34,23 @@ public interface ScheduleSlotJpaRepository extends JpaRepository<ScheduleSlotJpa
             LocalTime startTime,
             LocalTime endTime
     );
+
+    @Query("""
+            select s
+            from ScheduleSlotJpaEntity s
+            join fetch s.weeklySchedule w
+            join fetch w.member m
+            left join fetch s.appointment
+            where m.id in :memberIds
+              and s.scheduleDate = :scheduleDate
+              and s.startTime >= :startTime
+              and s.endTime <= :endTime
+            order by m.id asc, s.startTime asc
+            """)
+    List<ScheduleSlotJpaEntity> findAllByMemberIdsAndDateTimeRange(
+            @Param("memberIds") List<Long> memberIds,
+            @Param("scheduleDate") LocalDate scheduleDate,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
 }

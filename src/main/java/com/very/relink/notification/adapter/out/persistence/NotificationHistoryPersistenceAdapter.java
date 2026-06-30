@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
@@ -39,52 +40,50 @@ public class NotificationHistoryPersistenceAdapter implements NotificationHistor
     }
 
     @Override
+    @Transactional
     public List<NotificationOutbox> claimPendingOutboxes(int limit) {
         if (limit <= 0) {
             return List.of();
         }
 
-        return dslContext.transactionResult(configuration -> {
-            DSLContext transactionDsl = configuration.dsl();
-            List<NotificationOutbox> outboxes = transactionDsl
-                    .select(
-                            field("notification_outbox_id", Long.class),
-                            field("notification_id", Long.class),
-                            field("user_id", Long.class),
-                            field("channel", String.class),
-                            field("title", String.class),
-                            field("body", String.class),
-                            field("link_url", String.class),
-                            field("deduplication_id", Long.class),
-                            field("data_json", String.class),
-                            field("status", String.class),
-                            field("attempt_count", Integer.class),
-                            field("failure_reason", String.class)
-                    )
-                    .from(table("notification_outbox"))
-                    .where(field("status", String.class).eq(NotificationOutboxStatus.PENDING.name()))
-                    .orderBy(field("created_at").asc())
-                    .limit(limit)
-                    .forUpdate()
-                    .fetch(this::toNotificationOutbox);
+        List<NotificationOutbox> outboxes = dslContext
+                .select(
+                        field("notification_outbox_id", Long.class),
+                        field("notification_id", Long.class),
+                        field("user_id", Long.class),
+                        field("channel", String.class),
+                        field("title", String.class),
+                        field("body", String.class),
+                        field("link_url", String.class),
+                        field("deduplication_id", Long.class),
+                        field("data_json", String.class),
+                        field("status", String.class),
+                        field("attempt_count", Integer.class),
+                        field("failure_reason", String.class)
+                )
+                .from(table("notification_outbox"))
+                .where(field("status", String.class).eq(NotificationOutboxStatus.PENDING.name()))
+                .orderBy(field("created_at").asc())
+                .limit(limit)
+                .forUpdate()
+                .fetch(this::toNotificationOutbox);
 
-            List<Long> outboxIds = outboxes.stream()
-                    .map(NotificationOutbox::getId)
-                    .toList();
-            if (!outboxIds.isEmpty()) {
-                transactionDsl
-                        .update(table("notification_outbox"))
-                        .set(field("status", String.class), NotificationOutboxStatus.PROCESSING.name())
-                        .set(field("attempt_count", Integer.class), field("attempt_count", Integer.class).plus(1))
-                        .set(field("updated_at", LocalDateTime.class), LocalDateTime.now())
-                        .where(field("notification_outbox_id", Long.class).in(outboxIds))
-                        .execute();
-            }
+        List<Long> outboxIds = outboxes.stream()
+                .map(NotificationOutbox::getId)
+                .toList();
+        if (!outboxIds.isEmpty()) {
+            dslContext
+                    .update(table("notification_outbox"))
+                    .set(field("status", String.class), NotificationOutboxStatus.PROCESSING.name())
+                    .set(field("attempt_count", Integer.class), field("attempt_count", Integer.class).plus(1))
+                    .set(field("updated_at", LocalDateTime.class), LocalDateTime.now())
+                    .where(field("notification_outbox_id", Long.class).in(outboxIds))
+                    .execute();
+        }
 
-            return outboxes.stream()
-                    .map(this::toProcessingOutbox)
-                    .toList();
-        });
+        return outboxes.stream()
+                .map(this::toProcessingOutbox)
+                .toList();
     }
 
     @Override

@@ -100,6 +100,14 @@ public class ScheduleSlotJpaEntity extends BaseEntity {
 
     public void updateStatus(ScheduleSlotStatus status) {
         this.status = status;
+        if (status != ScheduleSlotStatus.APPOINTMENT) {
+            this.appointment = null;
+        }
+    }
+
+    public void assignAppointment(AppointmentJpaEntity appointment) {
+        this.status = ScheduleSlotStatus.APPOINTMENT;
+        this.appointment = appointment;
     }
 
     @PrePersist

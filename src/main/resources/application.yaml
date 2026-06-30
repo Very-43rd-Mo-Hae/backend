@@ -103,6 +103,12 @@ notification:
     fixed-delay-millis: ${NOTIFICATION_OUTBOX_FIXED_DELAY_MILLIS:5000}
 
 chat:
+  storage:
+    type: ${CHAT_STORAGE_TYPE:local}
+    local:
+      root-path: ${CHAT_LOCAL_STORAGE_ROOT:build/local-storage}
+      public-base-url: ${CHAT_LOCAL_PUBLIC_BASE_URL:http://localhost:8080/uploads}
+      upload-expires-in: ${CHAT_LOCAL_UPLOAD_EXPIRES_IN:300}
   redis:
     stream-key: ${CHAT_REDIS_STREAM_KEY:chat:events}
   outbox:

@@ -31,7 +31,9 @@ public class BatchDataSourceConfiguration {
     public PlatformTransactionManager batchTransactionManager(
             @Qualifier("batchDataSource") DataSource batchDataSource
     ) {
-        return new DataSourceTransactionManager(batchDataSource);
+        DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(batchDataSource);
+        transactionManager.setNestedTransactionAllowed(true);
+        return transactionManager;
     }
 
     @Bean

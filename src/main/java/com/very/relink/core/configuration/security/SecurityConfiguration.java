@@ -33,7 +33,8 @@ public class SecurityConfiguration {
             "/api/v1/auth/login",
             "/api/v1/auth/reissue",
             "/api/v1/auth/logout",
-            "/api/v1/push-subscriptions/public-key"
+            "/api/v1/push-subscriptions/public-key",
+            "/uploads/chat/**"
     };
 
     @Bean
