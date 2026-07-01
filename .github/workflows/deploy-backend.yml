@@ -81,19 +81,23 @@ jobs:
           test -f .env
           ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml pull app
           ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml up -d
-          docker image prune -f
 
           APP_PORT="\$(grep -E '^APP_PORT=' .env | tail -n 1 | cut -d= -f2- || true)"
           APP_PORT="\${APP_PORT:-8082}"
 
           for attempt in \$(seq 1 30); do
-            if curl -fsS "http://127.0.0.1:\${APP_PORT}/actuator/health" > /tmp/mohae-health.json; then
+            if curl -fsS --max-time 5 "http://127.0.0.1:\${APP_PORT}/actuator/health" > /tmp/mohae-health.json 2>/tmp/mohae-health.err; then
+              echo "헬스체크 통과: \${attempt}번째 시도에서 애플리케이션이 정상 응답했습니다."
               cat /tmp/mohae-health.json
+              echo "배포 성공!"
+              docker image prune -f || echo "이미지 정리에 실패했지만 배포는 이미 성공했습니다."
               exit 0
             fi
+            echo "헬스체크 대기 중: \${attempt}/30번째 시도 실패 - \$(cat /tmp/mohae-health.err)"
             sleep 3
           done
 
+          echo "배포 실패: 30번의 헬스체크 시도 후에도 애플리케이션이 정상 응답하지 않았습니다."
           docker compose --env-file .env -f docker-compose.yml logs --tail 120 app
           exit 1
           EOF
