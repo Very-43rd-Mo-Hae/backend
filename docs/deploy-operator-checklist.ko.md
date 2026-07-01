@@ -72,7 +72,7 @@ source: 백엔드 EC2 보안 그룹
 보안 그룹 설정:
 
 ```text
-HTTP 포트 inbound: 8080 또는 리버스 프록시를 쓰면 80/443
+HTTP 포트 inbound: 8082 또는 리버스 프록시를 쓰면 80/443
 SSH inbound: 22, 본인 IP만 허용 권장
 Outbound: RDS 3306, ElastiCache 6379, ECR 접근 가능
 ```
@@ -217,13 +217,13 @@ EC2에서 상태를 확인합니다.
 cd /opt/mohae/backend
 docker compose --env-file .env -f docker-compose.yml ps
 docker compose --env-file .env -f docker-compose.yml logs -f app
-curl -fsS http://127.0.0.1:${APP_PORT:-8080}/actuator/health
+curl -fsS http://127.0.0.1:${APP_PORT:-8082}/actuator/health
 ```
 
 외부에서 접근 확인:
 
 ```bash
-curl -fsS http://<ec2-public-ip-or-domain>:8080/actuator/health
+curl -fsS http://<ec2-public-ip-or-domain>:8082/actuator/health
 ```
 
 ## 8. 내부 Redis를 임시로 쓰는 경우

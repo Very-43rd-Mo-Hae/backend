@@ -11,7 +11,7 @@ For the Korean operator checklist, see `docs/deploy-operator-checklist.ko.md`.
 3. Give the EC2 instance permission to pull from ECR, either with an instance profile or by letting the workflow pass a short-lived ECR login password during deploy.
 4. Create an RDS MySQL database and allow inbound traffic from the EC2 security group on port `3306`.
 5. Create an ElastiCache Redis cluster and allow inbound traffic from the EC2 security group on port `6379`.
-6. Open the EC2 security group for the public HTTP port you use, usually `8080` or `80` behind a reverse proxy.
+6. Open the EC2 security group for the public HTTP port you use, usually `8082` or `80` behind a reverse proxy.
 
 ## EC2 setup
 
@@ -64,7 +64,7 @@ The workflow:
 2. pushes both `<sha>` and `latest` tags to ECR;
 3. uploads `deploy/docker-compose.prod.yml` to EC2;
 4. runs `docker compose pull app && docker compose up -d`;
-5. checks `http://127.0.0.1:${APP_PORT:-8080}/actuator/health`.
+5. checks `http://127.0.0.1:${APP_PORT:-8082}/actuator/health`.
 
 ## Useful EC2 commands
 
