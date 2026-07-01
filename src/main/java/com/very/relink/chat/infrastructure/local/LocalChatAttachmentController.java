@@ -1,6 +1,9 @@
 package com.very.relink.chat.infrastructure.local;
 
 import com.very.relink.chat.exception.ChatErrorCode;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/v1/chat/attachments/local")
 @ConditionalOnProperty(prefix = "chat.storage", name = "type", havingValue = "local", matchIfMissing = true)
+@Tag(name = "Chat Local Attachment", description = "로컬 개발 환경용 채팅 첨부 파일 업로드 API")
 public class LocalChatAttachmentController {
 
     private static final long MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024L;
@@ -32,9 +36,19 @@ public class LocalChatAttachmentController {
     }
 
     @PutMapping
+    @Operation(
+            summary = "로컬 채팅 첨부 파일 업로드",
+            description = "로컬 스토리지 설정에서 presigned URL 대신 사용할 채팅 첨부 파일 업로드 엔드포인트입니다. JPEG, PNG, WebP 이미지만 업로드할 수 있습니다."
+    )
     public ResponseEntity<Void> upload(
+            @Parameter(description = "저장할 첨부 파일 storageKey", example = "chat/attachments/1/example.png")
             @RequestParam String key,
+            @Parameter(description = "업로드 파일 Content-Type", example = "image/png")
             @RequestHeader(HttpHeaders.CONTENT_TYPE) String contentType,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "업로드할 이미지 파일 바이너리",
+                    required = true
+            )
             @RequestBody byte[] bytes
     ) {
         validateUpload(key, contentType, bytes);

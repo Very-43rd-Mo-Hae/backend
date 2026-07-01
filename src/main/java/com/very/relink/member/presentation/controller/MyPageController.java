@@ -5,6 +5,7 @@ import com.very.relink.member.application.response.MyPageResponse;
 import com.very.relink.member.application.response.ProfileImageUploadResponse;
 import com.very.relink.member.application.service.MyPageService;
 import com.very.relink.member.presentation.request.UpdateMyProfileRequest;
+import com.very.relink.member.presentation.swagger.MyPageSwagger;
 import com.very.relink.notification.application.port.in.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,18 +20,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/members/me")
-public class MyPageController {
+public class MyPageController implements MyPageSwagger {
 
     private final CurrentUserProvider currentUserProvider;
     private final MyPageService myPageService;
 
     @GetMapping
+    @Override
     public ResponseEntity<RestResponse<MyPageResponse>> getMyPage() {
         Long memberId = currentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(new RestResponse<>(myPageService.getMyPage(memberId)));
     }
 
     @PostMapping("/profile-image/presigned-url")
+    @Override
     public ResponseEntity<RestResponse<ProfileImageUploadResponse>> issueProfileImageUploadUrl(
             @RequestBody IssueProfileImageUploadRequest request
     ) {
@@ -44,6 +47,7 @@ public class MyPageController {
     }
 
     @PatchMapping("/profile")
+    @Override
     public ResponseEntity<RestResponse<MyPageResponse>> updateProfile(
             @RequestBody UpdateMyProfileRequest request
     ) {
@@ -57,6 +61,7 @@ public class MyPageController {
     }
 
     @DeleteMapping
+    @Override
     public ResponseEntity<RestResponse<Void>> withdraw() {
         Long memberId = currentUserProvider.getCurrentUserId();
         myPageService.withdraw(memberId);

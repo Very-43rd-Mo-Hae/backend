@@ -81,19 +81,22 @@ jobs:
           test -f .env
           ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml pull app
           ECR_REGISTRY='${ECR_REGISTRY}' ECR_REPOSITORY='${ECR_REPOSITORY}' IMAGE_TAG='${IMAGE_TAG}' docker compose --env-file .env -f docker-compose.yml up -d
-          docker image prune -f
 
           APP_PORT="\$(grep -E '^APP_PORT=' .env | tail -n 1 | cut -d= -f2- || true)"
           APP_PORT="\${APP_PORT:-8082}"
 
           for attempt in \$(seq 1 30); do
-            if curl -fsS "http://127.0.0.1:\${APP_PORT}/actuator/health" > /tmp/mohae-health.json; then
+            if curl -fsS --max-time 5 "http://127.0.0.1:\${APP_PORT}/actuator/health" > /tmp/mohae-health.json 2>/tmp/mohae-health.err; then
+              echo "Health check passed on attempt \${attempt}."
               cat /tmp/mohae-health.json
+              docker image prune -f
               exit 0
             fi
+            echo "Health check attempt \${attempt}/30 is not ready yet: \$(cat /tmp/mohae-health.err)"
             sleep 3
           done
 
+          echo "Health check failed after 30 attempts."
           docker compose --env-file .env -f docker-compose.yml logs --tail 120 app
           exit 1
           EOF
