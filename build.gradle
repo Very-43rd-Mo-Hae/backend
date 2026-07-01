@@ -26,6 +26,8 @@ apply from: "gradle/dependencies/lombok.gradle"
 apply from: "gradle/dependencies/google.gradle"
 
 dependencies {
+    implementation platform('software.amazon.awssdk:bom:2.25.60')
+    implementation 'software.amazon.awssdk:s3'
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'nl.martijndwars:web-push:5.1.1'
 }

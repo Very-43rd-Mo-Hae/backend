@@ -119,3 +119,24 @@ database:
   schema:
     app: ${DB_SCHEMA:mohae}
     batch: ${BATCH_SCHEMA:mohae_backend_batch}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  sql:
+    init:
+      mode: ${SPRING_SQL_INIT_MODE:never}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+
+chat:
+  storage:
+    type: s3
+    s3:
+      bucket: ${CHAT_S3_BUCKET}
+      region: ${AWS_REGION:ap-northeast-2}
+      public-base-url: ${CHAT_S3_PUBLIC_BASE_URL}
+      upload-expires-in: ${CHAT_S3_UPLOAD_EXPIRES_IN:300}

@@ -18,12 +18,9 @@ services:
       BATCH_DB_PASSWORD: ${BATCH_DB_PASSWORD}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_SQL_INIT_MODE: ${SPRING_SQL_INIT_MODE:-always}
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
-      CHAT_LOCAL_STORAGE_ROOT: /app/storage/chat
-      CHAT_LOCAL_PUBLIC_BASE_URL: ${CHAT_LOCAL_PUBLIC_BASE_URL:-http://localhost:8082/uploads}
-    volumes:
-      - mohae_chat_storage:/app/storage/chat
 
   redis:
     image: redis:7.4-alpine
@@ -44,5 +41,4 @@ services:
       start_period: 10s
 
 volumes:
-  mohae_chat_storage:
   mohae_redis_data:
