@@ -100,7 +100,7 @@ notification:
   outbox:
     enabled: ${NOTIFICATION_OUTBOX_ENABLED:true}
     batch-size: ${NOTIFICATION_OUTBOX_BATCH_SIZE:50}
-    fixed-delay-millis: ${NOTIFICATION_OUTBOX_FIXED_DELAY_MILLIS:5000}
+    fixed-delay-millis: ${NOTIFICATION_OUTBOX_FIXED_DELAY_MILLIS:60000}
 
 chat:
   storage:

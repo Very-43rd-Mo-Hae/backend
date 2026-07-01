@@ -19,7 +19,7 @@ public class NotificationOutboxScheduler {
     private final Job webPushOutboxJob;
     private final NotificationProperties notificationProperties;
 
-    @Scheduled(fixedDelayString = "${notification.outbox.fixed-delay-millis:5000}")
+    @Scheduled(fixedDelayString = "${notification.outbox.fixed-delay-millis:60000}")
     public void processWebPushOutbox() {
         if (!notificationProperties.outbox().enabled()) {
             return;
