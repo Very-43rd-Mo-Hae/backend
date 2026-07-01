@@ -265,6 +265,14 @@ When changing APIs:
 - Do not leak internal exception messages to clients.
 - Clearly state whether a contract change is a breaking change.
 
+Swagger policy for controllers:
+
+- Every public `@RestController` endpoint must have Korean Swagger documentation.
+- Prefer a `presentation/swagger/*Swagger.java` interface with `@Tag`, `@Operation`, `@ApiResponse`, `@Parameter`, request body descriptions, and `@ApiErrorCode` when an error code enum exists.
+- Controllers should implement the matching Swagger interface and mark handler methods with `@Override`.
+- Internal, local-only, or conditional infrastructure controllers must still be documented in Korean or explicitly hidden from OpenAPI with a clear reason.
+- When adding a new controller method, update Swagger documentation in the same change.
+
 REST defaults:
 
 - Create: `201 Created`

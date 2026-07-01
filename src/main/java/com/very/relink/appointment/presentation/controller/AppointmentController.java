@@ -4,6 +4,7 @@ import com.very.relink.appointment.application.response.AppointmentResponses.App
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendListResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarListResponse;
 import com.very.relink.appointment.application.service.AppointmentService;
+import com.very.relink.appointment.presentation.swagger.AppointmentSwagger;
 import com.very.relink.core.presentation.RestResponse;
 import com.very.relink.notification.application.port.in.CurrentUserProvider;
 import jakarta.validation.Valid;
@@ -25,12 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/appointments")
-public class AppointmentController {
+public class AppointmentController implements AppointmentSwagger {
 
     private final CurrentUserProvider currentUserProvider;
     private final AppointmentService appointmentService;
 
     @GetMapping("/available-friends")
+    @Override
     public ResponseEntity<RestResponse<AvailableFriendListResponse>> getAvailableFriends(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt
@@ -42,6 +44,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/friend-calendars")
+    @Override
     public ResponseEntity<RestResponse<FriendCalendarListResponse>> getFriendCalendars(
             @RequestParam List<Long> memberIds,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate date
@@ -53,6 +56,7 @@ public class AppointmentController {
     }
 
     @PostMapping
+    @Override
     public ResponseEntity<RestResponse<AppointmentResponse>> createAppointment(
             @Valid @RequestBody CreateAppointmentRequest request
     ) {
