@@ -7,7 +7,7 @@ For the Korean operator checklist, see `docs/deploy-operator-checklist.ko.md`.
 ## AWS resources
 
 1. Create an ECR private repository, for example `mohae-backend`.
-2. Create an IAM role for GitHub Actions OIDC with permission to push to that repository.
+2. Create an IAM user or access key for GitHub Actions with permission to push to that repository.
 3. Give the EC2 instance permission to pull from ECR, either with an instance profile or by letting the workflow pass a short-lived ECR login password during deploy.
 4. Create an RDS MySQL database and allow inbound traffic from the EC2 security group on port `3306`.
 5. Create an ElastiCache Redis cluster and allow inbound traffic from the EC2 security group on port `6379`.
@@ -41,7 +41,8 @@ Set these repository secrets:
 
 ```text
 AWS_REGION=ap-northeast-2
-AWS_ROLE_TO_ASSUME=arn:aws:iam::<account-id>:role/<github-actions-deploy-role>
+AWS_ACCESS_KEY_ID=<iam-user-access-key-id>
+AWS_SECRET_ACCESS_KEY=<iam-user-secret-access-key>
 ECR_REPOSITORY=mohae-backend
 EC2_HOST=<ec2-public-ip-or-domain>
 EC2_USER=ubuntu

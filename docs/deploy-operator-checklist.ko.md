@@ -105,16 +105,17 @@ curl --version
 
 GitHub Actions가 ECR에 이미지를 push할 수 있어야 합니다.
 
-권장 방식은 GitHub OIDC용 IAM Role을 만드는 것입니다.
+현재 배포 workflow는 IAM User access key를 GitHub Actions secret에 넣어서 사용합니다.
 
 GitHub Actions secret에 들어갈 값:
 
 ```text
-AWS_ROLE_TO_ASSUME=arn:aws:iam::<account-id>:role/<github-actions-deploy-role>
 AWS_REGION=ap-northeast-2
+AWS_ACCESS_KEY_ID=<iam-user-access-key-id>
+AWS_SECRET_ACCESS_KEY=<iam-user-secret-access-key>
 ```
 
-이 Role에는 최소한 다음 권한이 필요합니다.
+이 IAM User에는 최소한 다음 권한이 필요합니다.
 
 ```text
 ecr:GetAuthorizationToken
@@ -179,7 +180,8 @@ GitHub repository의 `Settings > Secrets and variables > Actions`에서 아래 s
 
 ```text
 AWS_REGION=ap-northeast-2
-AWS_ROLE_TO_ASSUME=arn:aws:iam::<account-id>:role/<github-actions-deploy-role>
+AWS_ACCESS_KEY_ID=<iam-user-access-key-id>
+AWS_SECRET_ACCESS_KEY=<iam-user-secret-access-key>
 ECR_REPOSITORY=mohae-backend
 EC2_HOST=<ec2-public-ip-or-domain>
 EC2_USER=ubuntu
@@ -257,8 +259,8 @@ docker image prune -f
 GitHub Actions 실패:
 
 ```text
-AWS_ROLE_TO_ASSUME 값이 맞는지
-OIDC trust policy에 repository/branch 조건이 맞는지
+AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY 값이 맞는지
+IAM User에 ECR push 권한이 붙어 있는지
 ECR_REPOSITORY 이름이 실제 ECR repository와 같은지
 EC2_HOST, EC2_USER, EC2_SSH_PRIVATE_KEY로 SSH 접속이 되는지
 ```
