@@ -90,7 +90,16 @@ jobs:
               echo "헬스체크 통과: \${attempt}번째 시도에서 애플리케이션이 정상 응답했습니다."
               cat /tmp/mohae-health.json
               echo "배포 성공!"
-              docker image prune -f || echo "이미지 정리에 실패했지만 배포는 이미 성공했습니다."
+              echo "이미지 정리를 시작합니다."
+              set +e
+              docker image prune -f
+              PRUNE_EXIT=\$?
+              set -e
+              if [ "\${PRUNE_EXIT}" -ne 0 ]; then
+                echo "이미지 정리 실패: docker image prune -f가 exit code \${PRUNE_EXIT}로 종료됐습니다. 배포는 이미 성공했으므로 실패 처리하지 않습니다."
+              else
+                echo "이미지 정리 완료."
+              fi
               exit 0
             fi
             echo "헬스체크 대기 중: \${attempt}/30번째 시도 실패 - \$(cat /tmp/mohae-health.err)"
