@@ -12,6 +12,7 @@ import com.very.relink.appointment.application.response.AppointmentResponses.Ava
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarListResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarResponse;
+import com.very.relink.appointment.application.response.AppointmentResponses.UpcomingAppointmentListResponse;
 import com.very.relink.appointment.domain.AppointmentParticipantStatus;
 import com.very.relink.appointment.exception.AppointmentErrorCode;
 import com.very.relink.friend.adapter.out.persistence.FriendshipJpaRepository;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AppointmentService {
 
     private static final int SLOT_MINUTES = 30;
+    private static final int MAX_UPCOMING_APPOINTMENT_LIMIT = 20;
     private static final List<Integer> REMINDER_MINUTES = List.of(24 * 60, 3 * 60, 60);
 
     private final MemberJpaRepository memberJpaRepository;
@@ -56,6 +59,33 @@ public class AppointmentService {
     private final ScheduleSlotJpaRepository scheduleSlotJpaRepository;
     private final ScheduleService scheduleService;
     private final WebPushNotificationService webPushNotificationService;
+
+    @Transactional(readOnly = true)
+    public UpcomingAppointmentListResponse getUpcomingAppointments(Long memberId, int limit) {
+        validateMemberExists(memberId);
+        int normalizedLimit = Math.max(1, Math.min(limit, MAX_UPCOMING_APPOINTMENT_LIMIT));
+        List<AppointmentJpaEntity> appointments = appointmentJpaRepository.findUpcomingAppointments(
+                memberId,
+                AppointmentParticipantStatus.ACCEPTED,
+                LocalDateTime.now(),
+                PageRequest.of(0, normalizedLimit)
+        );
+        List<Long> appointmentIds = appointments.stream().map(AppointmentJpaEntity::getId).toList();
+        Map<Long, List<MemberJpaEntity>> participantsByAppointmentId = toParticipantsByAppointmentId(
+                appointmentIds.isEmpty()
+                        ? List.of()
+                        : appointmentParticipantJpaRepository.findAllByAppointmentIds(appointmentIds)
+        );
+
+        return new UpcomingAppointmentListResponse(
+                appointments.stream()
+                        .map(appointment -> toAppointmentResponse(
+                                appointment,
+                                participantsByAppointmentId.getOrDefault(appointment.getId(), List.of(appointment.getOwner()))
+                        ))
+                        .toList()
+        );
+    }
 
     @Transactional(readOnly = true)
     public AvailableFriendListResponse getAvailableFriends(Long ownerId, LocalDateTime startAt, LocalDateTime endAt) {
@@ -351,6 +381,16 @@ public class AppointmentService {
             slotMap.computeIfAbsent(memberId, ignored -> new ArrayList<>()).add(slot);
         }
         return slotMap;
+    }
+
+    private Map<Long, List<MemberJpaEntity>> toParticipantsByAppointmentId(List<AppointmentParticipantJpaEntity> participants) {
+        Map<Long, List<MemberJpaEntity>> participantsByAppointmentId = new LinkedHashMap<>();
+        for (AppointmentParticipantJpaEntity participant : participants) {
+            participantsByAppointmentId
+                    .computeIfAbsent(participant.getAppointment().getId(), ignored -> new ArrayList<>())
+                    .add(participant.getMember());
+        }
+        return participantsByAppointmentId;
     }
 
     private AppointmentResponse toAppointmentResponse(

@@ -19,6 +19,11 @@ public final class AppointmentResponses {
     ) {
     }
 
+    public record UpcomingAppointmentListResponse(
+            List<AppointmentResponse> appointments
+    ) {
+    }
+
     public record AppointmentParticipantResponse(
             Long memberId,
             String name,

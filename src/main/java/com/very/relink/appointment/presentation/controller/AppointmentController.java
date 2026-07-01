@@ -3,6 +3,7 @@ package com.very.relink.appointment.presentation.controller;
 import com.very.relink.appointment.application.response.AppointmentResponses.AppointmentResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendListResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarListResponse;
+import com.very.relink.appointment.application.response.AppointmentResponses.UpcomingAppointmentListResponse;
 import com.very.relink.appointment.application.service.AppointmentService;
 import com.very.relink.appointment.presentation.swagger.AppointmentSwagger;
 import com.very.relink.core.presentation.RestResponse;
@@ -30,6 +31,17 @@ public class AppointmentController implements AppointmentSwagger {
 
     private final CurrentUserProvider currentUserProvider;
     private final AppointmentService appointmentService;
+
+    @GetMapping("/upcoming")
+    @Override
+    public ResponseEntity<RestResponse<UpcomingAppointmentListResponse>> getUpcomingAppointments(
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        Long memberId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(new RestResponse<>(
+                appointmentService.getUpcomingAppointments(memberId, limit)
+        ));
+    }
 
     @GetMapping("/available-friends")
     @Override

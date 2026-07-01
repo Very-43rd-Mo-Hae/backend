@@ -3,6 +3,7 @@ package com.very.relink.appointment.presentation.swagger;
 import com.very.relink.appointment.application.response.AppointmentResponses.AppointmentResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.AvailableFriendListResponse;
 import com.very.relink.appointment.application.response.AppointmentResponses.FriendCalendarListResponse;
+import com.very.relink.appointment.application.response.AppointmentResponses.UpcomingAppointmentListResponse;
 import com.very.relink.appointment.exception.AppointmentErrorCode;
 import com.very.relink.appointment.presentation.controller.AppointmentController.CreateAppointmentRequest;
 import com.very.relink.core.configuration.swagger.ApiErrorCode;
@@ -24,6 +25,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Appointment", description = "약속 생성과 친구 일정 확인 API")
 public interface AppointmentSwagger {
+
+    @Operation(
+            summary = "다가오는 약속 목록 조회",
+            description = "현재 로그인한 회원이 주최자이거나 참여자로 포함된 다가오는 약속을 시작 시각 오름차순으로 조회합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "다가오는 약속 목록 조회 성공",
+            content = @Content(schema = @Schema(implementation = UpcomingAppointmentListResponse.class))
+    )
+    @ApiErrorCode({AppointmentErrorCode.class})
+    ResponseEntity<RestResponse<UpcomingAppointmentListResponse>> getUpcomingAppointments(
+            @Parameter(description = "표시할 최대 약속 수. 최대 20개까지 조회합니다.", example = "5")
+            @RequestParam(defaultValue = "5") int limit
+    );
 
     @Operation(
             summary = "약속 가능 친구 조회",

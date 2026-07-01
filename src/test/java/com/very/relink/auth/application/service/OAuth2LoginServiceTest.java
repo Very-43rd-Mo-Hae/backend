@@ -56,7 +56,8 @@ class OAuth2LoginServiceTest {
                 "https://example.com/profile.png",
                 "device-uuid",
                 "iPhone 15",
-                "Mozilla/5.0"
+                "Mozilla/5.0",
+                false
         ));
 
         assertThat(result.memberId()).isEqualTo(1L);
@@ -112,7 +113,8 @@ class OAuth2LoginServiceTest {
                 "https://example.com/profile.png",
                 "device-uuid",
                 "iPhone 15",
-                "Mozilla/5.0"
+                "Mozilla/5.0",
+                false
         ));
 
         assertThat(result.memberId()).isEqualTo(2L);
@@ -123,6 +125,50 @@ class OAuth2LoginServiceTest {
         assertThat(saveAuthSessionPort.savedAuthSession.getDeviceName()).isEqualTo("iPhone 15");
         assertThat(saveAuthSessionPort.savedAuthSession.getUserAgent()).isEqualTo("Mozilla/5.0");
         assertThat(saveRefreshTokenCachePort.savedSessionId).isEqualTo(saveAuthSessionPort.savedAuthSession.getSessionId());
+    }
+
+    @Test
+    @DisplayName("기존 멤버 이메일이 비어 있으면 OAuth2 제공자 이메일로 보정한다.")
+    void loginUpdatesExistingMemberEmailWhenBlank() {
+        Member existingMember = Member.builder()
+                .id(2L)
+                .email(null)
+                .name("kakao-user")
+                .imageUrl("https://example.com/profile.png")
+                .provider(OAuth2Provider.KAKAO)
+                .providerId("123456789")
+                .build();
+        LoadMemberPort loadMemberPort = new FakeLoadMemberPort(Optional.of(existingMember));
+        FakeSaveMemberPort saveMemberPort = new FakeSaveMemberPort();
+        TokenIssuePort tokenIssuePort = (member, sessionId, refreshTokenJti) ->
+                new AuthTokens("access-token", "refresh-token", "Bearer", 3600L, 1209600L);
+        FakeSaveAuthSessionPort saveAuthSessionPort = new FakeSaveAuthSessionPort();
+        RefreshTokenHashPort refreshTokenHashPort = new FakeRefreshTokenHashPort();
+        FakeSaveRefreshTokenCachePort saveRefreshTokenCachePort = new FakeSaveRefreshTokenCachePort();
+        OAuth2LoginService service = new OAuth2LoginService(
+                loadMemberPort,
+                saveMemberPort,
+                tokenIssuePort,
+                saveAuthSessionPort,
+                refreshTokenHashPort,
+                saveRefreshTokenCachePort
+        );
+
+        OAuth2LoginResult result = service.login(new OAuth2LoginCommand(
+                OAuth2Provider.KAKAO,
+                "123456789",
+                "kakao@example.com",
+                "kakao-user",
+                "https://example.com/profile.png",
+                "device-uuid",
+                "iPhone 15",
+                "Mozilla/5.0",
+                false
+        ));
+
+        assertThat(result.memberId()).isEqualTo(2L);
+        assertThat(saveMemberPort.savedMember).isNotNull();
+        assertThat(saveMemberPort.savedMember.getEmail()).isEqualTo("kakao@example.com");
     }
 
     private record FakeLoadMemberPort(Optional<Member> member) implements LoadMemberPort {
@@ -145,6 +191,17 @@ class OAuth2LoginServiceTest {
             return member.filter(value ->
                     value.getProvider() == provider && value.getProviderId().equals(providerId)
             );
+        }
+    }
+
+    private static class FakeSaveMemberPort implements SaveMemberPort {
+
+        private Member savedMember;
+
+        @Override
+        public Member save(Member member) {
+            this.savedMember = member;
+            return member;
         }
     }
 

@@ -44,13 +44,14 @@ public class AuthController implements AuthSwagger {
                         socialLoginRequest.name(),
                         socialLoginRequest.deviceId(),
                         socialLoginRequest.deviceName(),
-                        userAgent
+                        userAgent,
+                        socialLoginRequest.shouldRestoreAccount()
                 )
         );
 
         return ResponseEntity.ok(
                 new RestResponse<>(
-                        SocialLoginResponse.from(result.memberId(), result.authTokens())
+                        SocialLoginResponse.from(result.memberId(), result.authTokens(), result.requiresAccountRestore())
                 )
         );
     }

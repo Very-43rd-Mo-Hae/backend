@@ -36,7 +36,8 @@ class KakaoSocialUserResolverTest {
                 null,
                 null,
                 null,
-                null
+                null,
+                false
         ));
 
         assertThat(userInfo.oAuth2Provider()).isEqualTo(OAuth2Provider.KAKAO);
@@ -61,7 +62,8 @@ class KakaoSocialUserResolverTest {
                 null,
                 null,
                 null,
-                null
+                null,
+                false
         )))
                 .isInstanceOf(DomainException.class)
                 .hasMessage("OAuth2 로그인에 실패했습니다.");

@@ -9,6 +9,7 @@ public record SocialLoginCommand(
         String name,
         String deviceId,
         String deviceName,
-        String userAgent
+        String userAgent,
+        boolean restoreAccount
 ) {
 }

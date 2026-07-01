@@ -52,7 +52,8 @@ public class SocialLoginService implements SocialLoginUseCase {
                 userInfo.imageUrl(),
                 socialLoginCommand.deviceId(),
                 socialLoginCommand.deviceName(),
-                socialLoginCommand.userAgent()
+                socialLoginCommand.userAgent(),
+                socialLoginCommand.restoreAccount()
         ));
     }
 

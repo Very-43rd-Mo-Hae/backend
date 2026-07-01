@@ -12,6 +12,8 @@ import lombok.Getter;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Member {
 
+    public static final long ACCOUNT_RESTORE_PERIOD_DAYS = 30L;
+
     private final Long id;
     private String email;
     private String name;
@@ -50,6 +52,17 @@ public class Member {
         this.imageUrl = imageUrl;
     }
 
+    public boolean updateEmailIfBlank(String email) {
+        if (email == null || email.isBlank()) {
+            return false;
+        }
+        if (this.email != null && !this.email.isBlank()) {
+            return false;
+        }
+        this.email = email;
+        return true;
+    }
+
     public boolean isWithdrawn() {
         return status == MemberStatus.WITHDRAWN;
     }
@@ -57,5 +70,16 @@ public class Member {
     public void withdraw(LocalDateTime withdrawnAt) {
         this.status = MemberStatus.WITHDRAWN;
         this.withdrawnAt = withdrawnAt;
+    }
+
+    public boolean canRestore(LocalDateTime now) {
+        return isWithdrawn()
+                && withdrawnAt != null
+                && !withdrawnAt.plusDays(ACCOUNT_RESTORE_PERIOD_DAYS).isBefore(now);
+    }
+
+    public void restore() {
+        this.status = MemberStatus.ACTIVE;
+        this.withdrawnAt = null;
     }
 }

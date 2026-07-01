@@ -10,6 +10,7 @@ public record OAuth2LoginCommand(
         String imageUrl,
         String deviceId,
         String deviceName,
-        String userAgent
+        String userAgent,
+        boolean restoreAccount
 ) {
 }

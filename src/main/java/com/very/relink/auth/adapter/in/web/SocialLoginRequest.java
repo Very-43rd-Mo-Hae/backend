@@ -32,6 +32,12 @@ public record SocialLoginRequest(
         String deviceId,
 
         @Schema(description = "클라이언트 기기 이름", example = "iPhone 15")
-        String deviceName
+        String deviceName,
+
+        @Schema(description = "탈퇴 예정 계정 복구 후 로그인 여부", example = "false")
+        Boolean restoreAccount
 ) {
+    public boolean shouldRestoreAccount() {
+        return Boolean.TRUE.equals(restoreAccount);
+    }
 }
