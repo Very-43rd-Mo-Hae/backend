@@ -75,7 +75,9 @@ jobs:
           printf '%s' "${ECR_PASSWORD}" | ssh -i ~/.ssh/mohae-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
             "docker login --username AWS --password-stdin '${ECR_REGISTRY}'"
 
-          ssh -i ~/.ssh/mohae-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << EOF
+          DEPLOY_LOG="$(mktemp)"
+          set +e
+          ssh -i ~/.ssh/mohae-ec2 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << EOF | tee "${DEPLOY_LOG}"
           set -euo pipefail
           cd '${DEPLOY_DIR}'
           test -f .env
@@ -110,3 +112,13 @@ jobs:
           docker compose --env-file .env -f docker-compose.yml logs --tail 120 app
           exit 1
           EOF
+          DEPLOY_EXIT=${PIPESTATUS[0]}
+          set -e
+
+          if grep -q "배포 성공!" "${DEPLOY_LOG}"; then
+            echo "GitHub Actions 배포 단계 성공 처리: 원격 서버에서 배포 성공 로그를 확인했습니다."
+            exit 0
+          fi
+
+          echo "GitHub Actions 배포 단계 실패: 원격 배포 명령이 exit code ${DEPLOY_EXIT}로 종료됐습니다."
+          exit "${DEPLOY_EXIT:-1}"
