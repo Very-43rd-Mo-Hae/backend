@@ -7,6 +7,7 @@ import com.very.relink.chat.application.command.ChatCommands.MarkChatRoomAsReadC
 import com.very.relink.chat.application.command.ChatCommands.SendChatMessageAttachmentCommand;
 import com.very.relink.chat.application.command.ChatCommands.SendChatMessageCommand;
 import com.very.relink.chat.application.response.ChatResponses.ChatMessagesResponse;
+import com.very.relink.chat.application.response.ChatResponses.ChatRoomParticipantsResponse;
 import com.very.relink.chat.application.response.ChatResponses.ChatRoomsResponse;
 import com.very.relink.chat.application.response.ChatResponses.CreateChatRoomResponse;
 import com.very.relink.chat.application.response.ChatResponses.IssueChatAttachmentPresignedUrlResponse;
@@ -15,6 +16,7 @@ import com.very.relink.chat.application.response.ChatResponses.SendChatMessageRe
 import com.very.relink.chat.application.service.CreateDirectChatRoomService;
 import com.very.relink.chat.application.service.CreateGroupChatRoomService;
 import com.very.relink.chat.application.service.GetChatMessagesQueryService;
+import com.very.relink.chat.application.service.GetChatRoomParticipantsQueryService;
 import com.very.relink.chat.application.service.GetChatRoomsQueryService;
 import com.very.relink.chat.application.service.IssueChatAttachmentPresignedUrlService;
 import com.very.relink.chat.application.service.MarkChatRoomAsReadService;
@@ -49,6 +51,7 @@ public class ChatController implements ChatSwagger {
     private final CreateDirectChatRoomService createDirectChatRoomService;
     private final CreateGroupChatRoomService createGroupChatRoomService;
     private final GetChatRoomsQueryService getChatRoomsQueryService;
+    private final GetChatRoomParticipantsQueryService getChatRoomParticipantsQueryService;
     private final GetChatMessagesQueryService getChatMessagesQueryService;
     private final SendChatMessageService sendChatMessageService;
     private final MarkChatRoomAsReadService markChatRoomAsReadService;
@@ -76,6 +79,15 @@ public class ChatController implements ChatSwagger {
     @Override
     public ResponseEntity<RestResponse<ChatRoomsResponse>> getRooms() {
         return ResponseEntity.ok(new RestResponse<>(getChatRoomsQueryService.getRooms(currentUserProvider.getCurrentUserId())));
+    }
+
+    @GetMapping("/rooms/{roomId}/participants")
+    @Override
+    public ResponseEntity<RestResponse<ChatRoomParticipantsResponse>> getRoomParticipants(
+            @PathVariable Long roomId
+    ) {
+        Long requesterId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(new RestResponse<>(getChatRoomParticipantsQueryService.getParticipants(requesterId, roomId)));
     }
 
     @GetMapping("/rooms/{roomId}/messages")

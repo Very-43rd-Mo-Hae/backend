@@ -30,6 +30,16 @@ public final class ChatResponses {
     public record ChatRoomsResponse(List<ChatRoomSummaryResponse> rooms) {
     }
 
+    public record ChatRoomParticipantsResponse(List<ChatRoomParticipantResponse> participants) {
+    }
+
+    public record ChatRoomParticipantResponse(
+            Long memberId,
+            String name,
+            String imageUrl
+    ) {
+    }
+
     public record ChatMessageAttachmentResponse(
             Long attachmentId,
             String attachmentType,

@@ -66,7 +66,10 @@ public interface FriendSwagger {
     )
     @ApiErrorCode({FriendErrorCode.class})
     ResponseEntity<RestResponse<FriendStatusListResponse>> getFriendStatuses(
-            @Parameter(description = "상태를 조회할 친구 memberId 목록. 최대 10개까지 허용합니다.", example = "1")
+            @Parameter(
+                    description = "상태를 조회할 친구 memberId 목록입니다. 최대 10개까지 허용하며 memberIds=1&memberIds=2처럼 같은 키를 반복해서 전달합니다.",
+                    example = "1"
+            )
             @RequestParam List<Long> memberIds
     );
 

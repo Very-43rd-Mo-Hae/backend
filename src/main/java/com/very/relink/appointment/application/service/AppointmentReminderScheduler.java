@@ -39,7 +39,7 @@ public class AppointmentReminderScheduler {
                 webPushNotificationService.send(new SendWebPushNotificationCommand(
                         reminder.getMember().getId(),
                         reminderTitle(reminder.getMinutesBefore()),
-                        reminder.getAppointment().getTitle() + " starts soon.",
+                        reminder.getAppointment().getTitle() + " 약속 시간이 곧 다가와요.",
                         "/calendar",
                         null,
                         Map.of(
@@ -57,11 +57,11 @@ public class AppointmentReminderScheduler {
 
     private String reminderTitle(int minutesBefore) {
         if (minutesBefore >= 24 * 60) {
-            return "Appointment tomorrow";
+            return "내일 약속이 있어요";
         }
         if (minutesBefore >= 3 * 60) {
-            return "Appointment in 3 hours";
+            return "3시간 뒤 약속이 있어요";
         }
-        return "Appointment in 1 hour";
+        return "1시간 뒤 약속이 있어요";
     }
 }

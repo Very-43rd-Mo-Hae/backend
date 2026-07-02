@@ -15,6 +15,11 @@ import com.very.relink.appointment.application.response.AppointmentResponses.Fri
 import com.very.relink.appointment.application.response.AppointmentResponses.UpcomingAppointmentListResponse;
 import com.very.relink.appointment.domain.AppointmentParticipantStatus;
 import com.very.relink.appointment.exception.AppointmentErrorCode;
+import com.very.relink.chat.domain.ChatEnums.ParticipantRole;
+import com.very.relink.chat.infrastructure.persistence.jpa.ChatParticipantJpaEntity;
+import com.very.relink.chat.infrastructure.persistence.jpa.ChatParticipantJpaRepository;
+import com.very.relink.chat.infrastructure.persistence.jpa.ChatRoomJpaEntity;
+import com.very.relink.chat.infrastructure.persistence.jpa.ChatRoomJpaRepository;
 import com.very.relink.friend.adapter.out.persistence.FriendshipJpaRepository;
 import com.very.relink.member.adapter.out.persistence.MemberJpaEntity;
 import com.very.relink.member.adapter.out.persistence.MemberJpaRepository;
@@ -57,6 +62,8 @@ public class AppointmentService {
     private final AppointmentReminderJpaRepository appointmentReminderJpaRepository;
     private final WeeklyScheduleJpaRepository weeklyScheduleJpaRepository;
     private final ScheduleSlotJpaRepository scheduleSlotJpaRepository;
+    private final ChatRoomJpaRepository chatRoomJpaRepository;
+    private final ChatParticipantJpaRepository chatParticipantJpaRepository;
     private final ScheduleService scheduleService;
     private final WebPushNotificationService webPushNotificationService;
 
@@ -177,9 +184,10 @@ public class AppointmentService {
         List<MemberJpaEntity> participants = loadParticipants(owner, participantMemberIds);
         validateParticipantsAvailable(participants, startAt, endAt);
 
+        String appointmentTitle = normalizeTitle(title);
         AppointmentJpaEntity appointment = appointmentJpaRepository.save(AppointmentJpaEntity.builder()
                 .owner(owner)
-                .title(normalizeTitle(title))
+                .title(appointmentTitle)
                 .startAt(startAt)
                 .endAt(endAt)
                 .memo(memo)
@@ -193,11 +201,27 @@ public class AppointmentService {
                     .build());
         }
 
+        ChatRoomJpaEntity chatRoom = createAppointmentChatRoom(appointment, participants);
+        String inviteLink = createInviteLink(appointment);
+
         blockParticipantSchedules(appointment, participants);
-        sendCreatedNotifications(appointment, participants);
+        sendCreatedNotifications(appointment, participants, chatRoom.getId());
         scheduleReminderNotifications(appointment, participants);
 
-        return toAppointmentResponse(appointment, participants);
+        return toAppointmentResponse(appointment, participants, chatRoom.getId(), inviteLink);
+    }
+
+    private ChatRoomJpaEntity createAppointmentChatRoom(AppointmentJpaEntity appointment, List<MemberJpaEntity> participants) {
+        ChatRoomJpaEntity chatRoom = chatRoomJpaRepository.save(ChatRoomJpaEntity.createAppointment(appointment.getTitle()));
+
+        for (MemberJpaEntity participant : participants) {
+            ParticipantRole role = participant.getId().equals(appointment.getOwner().getId())
+                    ? ParticipantRole.OWNER
+                    : ParticipantRole.MEMBER;
+            chatParticipantJpaRepository.save(ChatParticipantJpaEntity.active(chatRoom.getId(), participant.getId(), role));
+        }
+
+        return chatRoom;
     }
 
     private List<MemberJpaEntity> loadParticipants(MemberJpaEntity owner, List<Long> participantMemberIds) {
@@ -344,15 +368,23 @@ public class AppointmentService {
                 .orElseGet(() -> weeklyScheduleJpaRepository.save(WeeklyScheduleJpaEntity.create(member, weekStartDate)));
     }
 
-    private void sendCreatedNotifications(AppointmentJpaEntity appointment, List<MemberJpaEntity> participants) {
+    private void sendCreatedNotifications(AppointmentJpaEntity appointment, List<MemberJpaEntity> participants, Long chatRoomId) {
         for (MemberJpaEntity participant : participants) {
+            if (participant.getId().equals(appointment.getOwner().getId())) {
+                continue;
+            }
+
             webPushNotificationService.send(new SendWebPushNotificationCommand(
                     participant.getId(),
-                    "Appointment created",
-                    appointment.getTitle() + " has been added to your calendar.",
-                    "/calendar",
+                    "새 약속이 잡혔어요",
+                    appointment.getTitle() + " 약속이 캘린더에 추가됐어요.",
+                    "/chat/rooms/" + chatRoomId,
                     null,
-                    Map.of("type", "APPOINTMENT_CREATED", "appointmentId", appointment.getId())
+                    Map.of(
+                            "type", "APPOINTMENT_CREATED",
+                            "appointmentId", appointment.getId(),
+                            "chatRoomId", chatRoomId
+                    )
             ));
         }
     }
@@ -397,6 +429,15 @@ public class AppointmentService {
             AppointmentJpaEntity appointment,
             List<MemberJpaEntity> participants
     ) {
+        return toAppointmentResponse(appointment, participants, null, null);
+    }
+
+    private AppointmentResponse toAppointmentResponse(
+            AppointmentJpaEntity appointment,
+            List<MemberJpaEntity> participants,
+            Long chatRoomId,
+            String inviteLink
+    ) {
         return new AppointmentResponse(
                 appointment.getId(),
                 appointment.getTitle(),
@@ -410,7 +451,9 @@ public class AppointmentService {
                                 member.getName(),
                                 member.getImageUrl()
                         ))
-                        .toList()
+                        .toList(),
+                chatRoomId,
+                inviteLink
         );
     }
 
@@ -419,6 +462,10 @@ public class AppointmentService {
             return "Appointment";
         }
         return title.trim();
+    }
+
+    private String createInviteLink(AppointmentJpaEntity appointment) {
+        return "/invite/appointment-" + appointment.getId();
     }
 
     private void validateMemberExists(Long memberId) {

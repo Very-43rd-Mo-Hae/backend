@@ -28,16 +28,28 @@ public class ChatJooqQueryAdapter implements ChatQueryPort {
                     cr.room_type,
                     cr.title,
                     case
-                        when cr.room_type = 'GROUP' then cr.title
-                        else concat('member ', coalesce(
-                            (select cp2.member_id
+                        when cr.room_type in ('GROUP', 'APPOINTMENT') then cr.title
+                        else coalesce(
+                            (select m.name
                                from chat_participant cp2
+                               join members m
+                                 on m.member_id = cp2.member_id
                               where cp2.room_id = cr.chat_room_id
                                 and cp2.member_id <> ?
+                                and cp2.status = ?
                               order by cp2.member_id
                               limit 1),
-                            ?
-                        ))
+                            concat('회원 ', coalesce(
+                                (select cp2.member_id
+                                   from chat_participant cp2
+                                  where cp2.room_id = cr.chat_room_id
+                                    and cp2.member_id <> ?
+                                    and cp2.status = ?
+                                  order by cp2.member_id
+                                  limit 1),
+                                ?
+                            ))
+                        )
                     end as display_name,
                     cr.cover_image_key,
                     lm.text_content as last_message,
@@ -51,6 +63,7 @@ public class ChatJooqQueryAdapter implements ChatQueryPort {
                            and crc.member_id = ?
                          where cm.room_id = cr.chat_room_id
                            and cm.chat_message_id > coalesce(crc.last_read_message_id, 0)
+                           and cm.sender_id <> ?
                     ) as unread_count
                   from chat_room cr
                   join chat_participant cp
@@ -67,7 +80,18 @@ public class ChatJooqQueryAdapter implements ChatQueryPort {
                     )
                  order by coalesce(lm.created_at, cr.created_at) desc
                 """;
-        return dslContext.resultQuery(sql, memberId, memberId, memberId, memberId, ParticipantStatus.ACTIVE.name())
+        return dslContext.resultQuery(
+                        sql,
+                        memberId,
+                        ParticipantStatus.ACTIVE.name(),
+                        memberId,
+                        ParticipantStatus.ACTIVE.name(),
+                        memberId,
+                        memberId,
+                        memberId,
+                        memberId,
+                        ParticipantStatus.ACTIVE.name()
+                )
                 .fetch(record -> new ChatRoomSummaryProjection(
                         record.get("chat_room_id", Long.class),
                         RoomType.valueOf(record.get("room_type", String.class)),

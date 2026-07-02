@@ -69,7 +69,10 @@ public interface AppointmentSwagger {
     )
     @ApiErrorCode({AppointmentErrorCode.class})
     ResponseEntity<RestResponse<FriendCalendarListResponse>> getFriendCalendars(
-            @Parameter(description = "캘린더를 조회할 친구 memberId 목록. memberIds=1&memberIds=2 형태로 전달합니다.", example = "1")
+            @Parameter(
+                    description = "캘린더를 조회할 친구 memberId 목록입니다. 쿼리 문자열은 memberIds=1&memberIds=2처럼 같은 키를 반복해서 전달합니다.",
+                    example = "1"
+            )
             @RequestParam List<Long> memberIds,
             @Parameter(description = "조회 기준 날짜. 해당 날짜가 포함된 주간 일정이 반환됩니다.", example = "2026-07-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date

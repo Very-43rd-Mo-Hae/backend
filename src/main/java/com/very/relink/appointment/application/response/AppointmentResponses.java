@@ -15,7 +15,9 @@ public final class AppointmentResponses {
             LocalDateTime startAt,
             LocalDateTime endAt,
             String memo,
-            List<AppointmentParticipantResponse> participants
+            List<AppointmentParticipantResponse> participants,
+            Long chatRoomId,
+            String inviteLink
     ) {
     }
 

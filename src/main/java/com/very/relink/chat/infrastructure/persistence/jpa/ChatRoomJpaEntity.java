@@ -59,4 +59,12 @@ public class ChatRoomJpaEntity extends BaseEntity {
                 .status(RoomStatus.ACTIVE)
                 .build();
     }
+
+    public static ChatRoomJpaEntity createAppointment(String title) {
+        return ChatRoomJpaEntity.builder()
+                .roomType(RoomType.APPOINTMENT)
+                .title(title)
+                .status(RoomStatus.ACTIVE)
+                .build();
+    }
 }

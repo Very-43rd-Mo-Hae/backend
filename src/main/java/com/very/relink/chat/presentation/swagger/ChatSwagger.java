@@ -1,6 +1,7 @@
 package com.very.relink.chat.presentation.swagger;
 
 import com.very.relink.chat.application.response.ChatResponses.ChatMessagesResponse;
+import com.very.relink.chat.application.response.ChatResponses.ChatRoomParticipantsResponse;
 import com.very.relink.chat.application.response.ChatResponses.ChatRoomsResponse;
 import com.very.relink.chat.application.response.ChatResponses.CreateChatRoomResponse;
 import com.very.relink.chat.application.response.ChatResponses.IssueChatAttachmentPresignedUrlResponse;
@@ -76,6 +77,21 @@ public interface ChatSwagger {
     )
     @ApiErrorCode({ChatErrorCode.class})
     ResponseEntity<RestResponse<ChatRoomsResponse>> getRooms();
+
+    @Operation(
+            summary = "채팅방 참여자 목록 조회",
+            description = "현재 로그인한 회원이 참여 중인 채팅방의 활성 참여자 목록을 조회합니다. 그룹 채팅방에서 약속을 제안할 때 방 인원을 약속 참여자로 채우는 데 사용합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "채팅방 참여자 목록 조회 성공",
+            content = @Content(schema = @Schema(implementation = ChatRoomParticipantsResponse.class))
+    )
+    @ApiErrorCode({ChatErrorCode.class})
+    ResponseEntity<RestResponse<ChatRoomParticipantsResponse>> getRoomParticipants(
+            @Parameter(description = "참여자를 조회할 채팅방 ID", example = "1")
+            @PathVariable Long roomId
+    );
 
     @Operation(
             summary = "채팅 메시지 목록 조회",

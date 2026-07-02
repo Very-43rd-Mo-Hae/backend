@@ -7,7 +7,8 @@ public final class ChatEnums {
 
     public enum RoomType {
         DIRECT,
-        GROUP
+        GROUP,
+        APPOINTMENT
     }
 
     public enum RoomStatus {
